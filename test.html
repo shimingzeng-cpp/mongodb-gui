@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Test</title></head>
+<body>
+<h1>MongoDB Load Test</h1>
+<div id="result"></div>
+<script>
+  const r = document.getElementById('result');
+  try {
+    r.innerHTML += '<p>window.__mongo type: ' + typeof window.__mongo + '</p>';
+    if (window.__mongo) {
+      r.innerHTML += '<p>Methods: ' + Object.keys(window.__mongo).join(', ') + '</p>';
+    } else {
+      r.innerHTML += '<p style="color:red">window.__mongo is undefined!</p>';
+      r.innerHTML += '<p>window.require: ' + typeof window.require + '</p>';
+    }
+  } catch(e) {
+    r.innerHTML += '<p style="color:red">Error: ' + e.message + '</p>';
+  }
+</script>
+</body>
+</html>
