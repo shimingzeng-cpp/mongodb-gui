@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Input, Select, Tag, Popconfirm, message, Tooltip, Typography } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CopyOutlined, CloseOutlined, CodeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CopyOutlined, CloseOutlined, CodeOutlined, SafetyCertificateOutlined, ThunderboltOutlined, DownloadOutlined } from '@ant-design/icons';
 import useStore from '../store';
 
 const { Text } = Typography;
@@ -49,7 +49,8 @@ export default function DocTable() {
   const {
     selectedDb, selectedCollection,
     documents, totalDocs, page, pageSize,
-    setPage, setDocuments, filter, setFilter, setEditingDoc,
+    setPage, setDocuments, filter, setFilter, setEditingDoc, setSchemaOpen, setIndexOpen, setExportOpen, reloadKey,
+    activeConnectionId,
   } = useStore();
 
   const [loading, setLoading] = useState(false);
@@ -62,7 +63,7 @@ export default function DocTable() {
     if (!selectedDb || !selectedCollection) return;
     setLoading(true);
     try {
-      const result = await window.__mongo.findDocuments(selectedDb, selectedCollection, filterObj, {
+      const result = await window.__mongo.findDocuments(activeConnectionId, selectedDb, selectedCollection, filterObj, {
         skip: (p - 1) * pageSize, limit: pageSize,
       });
       setDocuments(result.docs, result.total);
@@ -74,15 +75,23 @@ export default function DocTable() {
 
   useEffect(() => {
     if (selectedDb && selectedCollection) loadData(1);
-  }, [selectedDb, selectedCollection]);
+  }, [selectedDb, selectedCollection, reloadKey]);
 
   useEffect(() => {
     if (documents.length === 0) { setColumns([]); return; }
     const keys = new Set();
-    documents.forEach(doc => Object.keys(doc).forEach(k => keys.add(k)));
+    documents.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') keys.add(k); }));
     setColumns(Array.from(keys).map(key => ({
       title: key, dataIndex: key, key,
-      width: key === '_id' ? 240 : 160, ellipsis: true,
+      width: 160, ellipsis: true,
+      sorter: (a, b) => {
+        const va = a[key], vb = b[key];
+        if (va == null && vb == null) return 0;
+        if (va == null) return -1;
+        if (vb == null) return 1;
+        if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+        return String(va).localeCompare(String(vb));
+      },
       render: (val) => renderCellValue(val),
     })));
   }, [documents]);
@@ -134,7 +143,7 @@ export default function DocTable() {
 
   const handleDelete = async (record) => {
     try {
-      await window.__mongo.deleteDocument(selectedDb, selectedCollection, { _id: record._id });
+      await window.__mongo.deleteDocument(activeConnectionId, selectedDb, selectedCollection, { _id: record._id });
       message.success('删除成功');
       loadData(page, buildFilter(conditions));
     } catch (err) { message.error('删除失败: ' + err.message); }
@@ -229,9 +238,14 @@ export default function DocTable() {
       </div>
 
       {/* 顶部信息栏 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
         <Text type="secondary">共 {totalDocs} 条，第 {page} 页</Text>
-        <Button onClick={() => setEditingDoc({}, 'create')} type="primary" size="small" icon={<PlusOutlined />}>新建文档</Button>
+        <Space size="small">
+          <Button onClick={() => setEditingDoc({}, 'create')} type="primary" size="small" icon={<PlusOutlined />}>新建文档</Button>
+          <Button onClick={() => setSchemaOpen(true)} size="small" icon={<SafetyCertificateOutlined />}>字段</Button>
+          <Button onClick={() => setIndexOpen(true)} size="small" icon={<ThunderboltOutlined />}>索引</Button>
+          <Button onClick={() => setExportOpen(true)} size="small" icon={<DownloadOutlined />}>导出</Button>
+        </Space>
       </div>
 
       {/* 表格 */}

@@ -7,7 +7,7 @@ const { chatCompletion, buildSystemPrompt } = window.__ai;
 const { Text } = Typography;
 
 export default function ChatPanel() {
-  const { selectedDb, documents, aiConfig } = useStore();
+  const { selectedDb, documents, aiConfig, activeConnectionId } = useStore();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,7 +36,7 @@ export default function ChatPanel() {
 
     try {
       // 获取当前数据库上下文
-      const cols = selectedDb ? await window.__mongo.listCollections(selectedDb).catch(() => []) : [];
+      const cols = selectedDb ? await window.__mongo.listCollections(activeConnectionId, selectedDb).catch(() => []) : [];
       const colNames = cols.map(c => c.name);
       const fieldNames = documents.length > 0 ? Object.keys(documents[0]) : [];
       const sampleDocs = documents.slice(0, 3);
@@ -89,7 +89,7 @@ export default function ChatPanel() {
 
   const executeCommand = async (command, msgObj) => {
     try {
-      const result = await window.__mongo.executeShell(selectedDb, command);
+      const result = await window.__mongo.executeShell(activeConnectionId, selectedDb, command);
       const idx = messages.findIndex(m => m.time === msgObj.time);
       if (idx >= 0) {
         const updated = [...messages];
@@ -163,7 +163,7 @@ export default function ChatPanel() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* 消息列表 */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 12px' }}>
+      <div style={{ flex: 1, overflow: 'auto', overflowX: 'hidden', padding: '8px 12px' }}>
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', color: '#666', padding: 40, fontSize: 13 }}>
             <RobotOutlined style={{ fontSize: 32, marginBottom: 12 }} />

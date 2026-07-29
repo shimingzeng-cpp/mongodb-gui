@@ -1,62 +1,8 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 let mainWindow;
-
-const menuTemplate = [
-  {
-    label: '文件',
-    submenu: [
-      { label: '新建连接', accelerator: 'CmdOrCtrl+N', click: () => mainWindow.webContents.send('menu-new-connection') },
-      { type: 'separator' },
-      { label: '退出', accelerator: 'CmdOrCtrl+Q', role: 'quit' },
-    ],
-  },
-  {
-    label: '编辑',
-    submenu: [
-      { label: '撤销', accelerator: 'CmdOrCtrl+Z', role: 'undo' },
-      { label: '重做', accelerator: 'CmdOrCtrl+Shift+Z', role: 'redo' },
-      { type: 'separator' },
-      { label: '剪切', accelerator: 'CmdOrCtrl+X', role: 'cut' },
-      { label: '复制', accelerator: 'CmdOrCtrl+C', role: 'copy' },
-      { label: '粘贴', accelerator: 'CmdOrCtrl+V', role: 'paste' },
-      { label: '全选', accelerator: 'CmdOrCtrl+A', role: 'selectAll' },
-    ],
-  },
-  {
-    label: '视图',
-    submenu: [
-      { label: '刷新', accelerator: 'CmdOrCtrl+R', role: 'reload' },
-      { label: '开发者工具', accelerator: 'F12', role: 'toggleDevTools' },
-      { type: 'separator' },
-      { label: '放大', accelerator: 'CmdOrCtrl+=', role: 'zoomIn' },
-      { label: '缩小', accelerator: 'CmdOrCtrl+-', role: 'zoomOut' },
-      { label: '重置缩放', accelerator: 'CmdOrCtrl+0', role: 'resetZoom' },
-    ],
-  },
-  {
-    label: '窗口',
-    submenu: [
-      { label: '最小化', accelerator: 'CmdOrCtrl+M', role: 'minimize' },
-      { label: '关闭', accelerator: 'CmdOrCtrl+W', role: 'close' },
-    ],
-  },
-  {
-    label: '帮助',
-    submenu: [
-      { label: '关于 MongoDB GUI', click: () => {
-        const { dialog } = require('electron');
-        dialog.showMessageBox(mainWindow, {
-          type: 'info',
-          title: '关于',
-          message: 'MongoDB GUI v1.0',
-          detail: '本地 MongoDB 桌面管理工具',
-        });
-      }},
-    ],
-  },
-];
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -72,9 +18,8 @@ function createWindow() {
     },
   });
 
-  // 设置菜单栏
-  const menu = Menu.buildFromTemplate(menuTemplate);
-  Menu.setApplicationMenu(menu);
+  // 去掉菜单栏
+  Menu.setApplicationMenu(null);
 
   if (process.env.NODE_ENV !== 'production') {
     mainWindow.loadURL('http://localhost:5173');
@@ -86,6 +31,40 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+// IPC: 保存文件
+ipcMain.handle('dialog:saveFile', async (event, { defaultName, content }) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: defaultName,
+    filters: [
+      { name: 'JSON', extensions: ['json'] },
+      { name: 'CSV', extensions: ['csv'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+  if (!result.canceled && result.filePath) {
+    fs.writeFileSync(result.filePath, content, 'utf-8');
+    return { success: true, filePath: result.filePath };
+  }
+  return { success: false, canceled: true };
+});
+
+// IPC: 打开文件
+ipcMain.handle('dialog:openFile', async (event, { filters }) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: filters || [
+      { name: 'JSON', extensions: ['json'] },
+      { name: 'CSV', extensions: ['csv'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    const content = fs.readFileSync(result.filePaths[0], 'utf-8');
+    return { success: true, content, filePath: result.filePaths[0] };
+  }
+  return { success: false, canceled: true };
+});
 
 app.whenReady().then(createWindow);
 
