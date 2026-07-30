@@ -27,7 +27,7 @@
 
 ### 方式一：直接下载安装包
 
-从 [Releases](https://github.com/shimingzeng-cpp/mongodb-gui/releases) 页面下载最新版本，或直接使用源码构建（见方式二）。
+从 [Releases](https://github.com/shimingzeng-cpp/mongodb-gui/releases) 页面下载最新版本（暂无发布，请先使用源码构建）。
 
 ### 方式二：源码运行
 
