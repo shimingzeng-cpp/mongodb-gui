@@ -25,11 +25,11 @@
 
 ## 安装
 
-### 方式一：直接下载安装包
+### 方式一：直接下载安装包（推荐）
 
-从 [Releases](https://github.com/shimingzeng-cpp/mongodb-gui/releases) 页面下载最新版本（暂无发布，请先使用源码构建）。
+从 [Releases](https://github.com/shimingzeng-cpp/mongodb-gui/releases) 页面下载最新版本，双击安装即可使用，**无需安装 Node.js 或 npm**。
 
-### 方式二：源码运行
+### 方式二：源码运行（开发者）
 
 #### 前置要求
 
