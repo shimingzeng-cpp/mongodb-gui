@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Space, Tag, message, Select, Typography, Input } from 'antd';
-import { LinkOutlined, DisconnectOutlined, ReloadOutlined, SettingOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined, SunOutlined, MoonOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { LinkOutlined, DisconnectOutlined, ReloadOutlined, SettingOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined, SunOutlined, MoonOutlined, DatabaseOutlined, RobotOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
@@ -12,7 +12,7 @@ export default function ConnectionBar() {
     setConnected, setUri, setActiveConnectionId, setConnectionLoading,
     setDatabases, setSelectedDb, setSelectedCollection,
     setDocuments, setPage, setSettingsOpen, doRefresh, setHelpOpen, setSyncOpen,
-    addConnection, theme: appTheme, toggleTheme,
+    addConnection, theme: appTheme, toggleTheme, aiOpen, setAiOpen,
   } = useStore();
   const t = useTheme();
 
@@ -136,6 +136,13 @@ export default function ConnectionBar() {
           onClick={toggleTheme}
           title={appTheme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
           style={{ color: t.text.secondary }}
+        />
+        <Button
+          type={aiOpen ? 'primary' : 'text'}
+          icon={<RobotOutlined />}
+          onClick={() => setAiOpen(!aiOpen)}
+          title="AI 助手"
+          style={{ color: aiOpen ? undefined : t.text.secondary }}
         />
         <Button type="text" icon={<QuestionCircleOutlined />} onClick={() => setHelpOpen(true)} title="帮助" style={{ color: t.text.secondary }} />
         <Button type="text" icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)} title="设置" style={{ color: t.text.secondary }} />

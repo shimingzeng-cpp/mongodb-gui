@@ -1,9 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Input, Button, Space, Typography, message, Spin, Tabs } from 'antd';
-import { PlayCircleOutlined, ClearOutlined, RobotOutlined, CodeOutlined } from '@ant-design/icons';
+import { Input, Button, Space, Typography, message, Spin, Table, Tag, Modal } from 'antd';
+import { PlayCircleOutlined, ClearOutlined, CodeOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
-import ChatPanel from './ChatPanel';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -45,6 +44,8 @@ function ShellTab() {
   const [historyIdx, setHistoryIdx] = useState(-1);
   const [suggestions, setSuggestions] = useState([]);
   const [selectedSugg, setSelectedSugg] = useState(0);
+  const [resultModalOpen, setResultModalOpen] = useState(false);
+  const [fullResult, setFullResult] = useState(null);
   const textareaRef = useRef(null);
 
   const getCurrentWord = (text, cursorPos) => {
@@ -97,11 +98,12 @@ function ShellTab() {
     try {
       const res = await window.__mongo.executeShell(activeConnectionId, selectedDb, cmd);
       setResult(res);
+      setFullResult(res);
       if (res.success && (cmd.includes('insert') || cmd.includes('update') || cmd.includes('delete') || cmd.includes('drop'))) {
         const colMatch = cmd.match(/db\.(\w+)\./);
         if (colMatch) { setSelectedCollection(colMatch[1]); setPage(1); }
       }
-    } catch (err) { setResult({ success: false, error: err.message }); }
+    } catch (err) { setResult({ success: false, error: err.message }); setFullResult(null); }
     setLoading(false);
   };
 
@@ -136,8 +138,93 @@ function ShellTab() {
     if (!res.success) return <Text type="danger" style={{ whiteSpace: 'pre-wrap' }}>❌ {res.error}</Text>;
     const data = res.data;
     if (data === undefined || data === null) return <Text type="success">✅ 执行成功</Text>;
+    // 数组且包含对象 → 表格展示
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+      const keys = new Set();
+      data.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') keys.add(k); }));
+      const cols = Array.from(keys).map(key => ({
+        title: key, dataIndex: key, key,
+        width: 160, ellipsis: true,
+        render: (val) => {
+          if (val === null) return <Text type="secondary" italic>null</Text>;
+          if (typeof val === 'object') {
+            const str = JSON.stringify(val);
+            return <Text style={{ color: t.info }} ellipsis>{str.length > 40 ? str.slice(0, 40) + '...' : str}</Text>;
+          }
+          if (typeof val === 'boolean') return <Tag color={val ? 'green' : 'red'}>{String(val)}</Tag>;
+          return <Text>{String(val)}</Text>;
+        },
+      }));
+      return (
+        <div style={{ height: '100%', overflow: 'auto', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 1 }}>
+            <Button type="link" size="small" icon={<CodeOutlined />}
+              onClick={() => setResultModalOpen(true)} style={{ fontSize: 12 }}>
+              展开全部
+            </Button>
+          </div>
+          <Table
+            columns={cols}
+            dataSource={data}
+            rowKey={(r) => r._id ? String(r._id) : JSON.stringify(r)}
+            size="small"
+            pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: ['50', '100', '500'], showTotal: (t) => `共 ${t} 条` }}
+            scroll={{ x: 'max-content', y: 150 }}
+            virtual
+          />
+        </div>
+      );
+    }
     if (typeof data === 'object') {
-      return <pre style={{ background: t.bg.panel, color: t.accent, padding: 12, borderRadius: 6, maxHeight: 300, overflow: 'auto', fontSize: 13, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{JSON.stringify(data, null, 2)}</pre>;
+      return (
+        <div style={{ position: 'relative' }}>
+          <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 1 }}>
+            <Button type="link" size="small" icon={<CodeOutlined />}
+              onClick={() => setResultModalOpen(true)} style={{ fontSize: 12 }}>
+              展开全部
+            </Button>
+          </div>
+          <pre style={{ background: t.bg.panel, color: t.accent, padding: 12, borderRadius: 6, maxHeight: 150, overflow: 'auto', fontSize: 13, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{JSON.stringify(data, null, 2)}</pre>
+        </div>
+      );
+    }
+    return <Text style={{ color: t.accent }}>{String(data)}</Text>;
+  };
+
+  const renderFullResult = (res) => {
+    if (!res || !res.success) return null;
+    const data = res.data;
+    if (data === undefined || data === null) return <Text type="success">✅ 执行成功</Text>;
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+      const keys = new Set();
+      data.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') keys.add(k); }));
+      const cols = Array.from(keys).map(key => ({
+        title: key, dataIndex: key, key,
+        width: 160, ellipsis: true,
+        render: (val) => {
+          if (val === null) return <Text type="secondary" italic>null</Text>;
+          if (typeof val === 'object') {
+            const str = JSON.stringify(val);
+            return <Text style={{ color: t.info }} ellipsis>{str.length > 60 ? str.slice(0, 60) + '...' : str}</Text>;
+          }
+          if (typeof val === 'boolean') return <Tag color={val ? 'green' : 'red'}>{String(val)}</Tag>;
+          return <Text>{String(val)}</Text>;
+        },
+      }));
+      return (
+        <Table
+          columns={cols}
+          dataSource={data}
+          rowKey={(r) => r._id ? String(r._id) : JSON.stringify(r)}
+          size="small"
+          pagination={{ pageSize: 100, showSizeChanger: true, pageSizeOptions: ['50', '100', '500', '5000'], showTotal: (t) => `共 ${t} 条` }}
+          scroll={{ x: 'max-content', y: '60vh' }}
+          virtual
+        />
+      );
+    }
+    if (typeof data === 'object') {
+      return <pre style={{ background: t.bg.panel, color: t.accent, padding: 12, borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{JSON.stringify(data, null, 2)}</pre>;
     }
     return <Text style={{ color: t.accent }}>{String(data)}</Text>;
   };
@@ -187,22 +274,29 @@ function ShellTab() {
       <div style={{ flex: 1, overflow: 'hidden', padding: '0 8px 8px' }}>
         {loading ? <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div> : renderResult(result)}
       </div>
+
+      {/* 全屏结果弹窗 */}
+      <Modal
+        title="Shell 执行结果"
+        open={resultModalOpen}
+        onCancel={() => setResultModalOpen(false)}
+        footer={null}
+        width="80%"
+        style={{ top: 20 }}
+      >
+        <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
+          {fullResult && renderFullResult(fullResult)}
+        </div>
+      </Modal>
     </div>
   );
 }
 
 export default function ShellPanel() {
-  const [activeTab, setActiveTab] = useState('shell');
   const t = useTheme();
-  const tabItems = [
-    { key: 'shell', label: <Space size={4}><CodeOutlined />Shell</Space>, children: <ShellTab /> },
-    { key: 'ai', label: <Space size={4}><RobotOutlined />AI 助手</Space>, children: <ChatPanel /> },
-  ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', borderTop: `1px solid ${t.border}`, overflow: 'hidden' }}>
-      <Tabs className="shell-tabs" activeKey={activeTab} onChange={setActiveTab} items={tabItems} size="small"
-        tabBarStyle={{ marginBottom: 0, padding: '0 12px', background: t.bg.panel, flexShrink: 0 }}
-        style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} />
+      <ShellTab />
     </div>
   );
 }

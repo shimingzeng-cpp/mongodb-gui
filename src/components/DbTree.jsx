@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button, message, Spin, Typography, Modal, Input, Dropdown, Space } from 'antd';
-import { DatabaseOutlined, TableOutlined, PlusOutlined, RightOutlined, DownOutlined, DeleteOutlined, MoreOutlined } from '@ant-design/icons';
+import { Button, message, Spin, Typography, Modal, Input, Dropdown } from 'antd';
+import { DatabaseOutlined, TableOutlined, PlusOutlined, RightOutlined, DownOutlined, DeleteOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
@@ -25,19 +25,19 @@ export default function DbTree() {
 
   const toggleDb = async (dbName) => {
     if (expandedDbs[dbName]) {
-      setExpandedDbs({ ...expandedDbs, [dbName]: false });
+      setExpandedDbs(prev => ({ ...prev, [dbName]: false }));
       return;
     }
-    setExpandedDbs({ ...expandedDbs, [dbName]: true });
+    setExpandedDbs(prev => ({ ...prev, [dbName]: true }));
     setSelectedDb(dbName);
     setSelectedCollection(null);
     if (!collections[dbName]) {
-      setLoading({ ...loading, [dbName]: true });
+      setLoading(prev => ({ ...prev, [dbName]: true }));
       try {
         const cols = await window.__mongo.listCollections(activeConnectionId, dbName);
-        setCollections({ ...collections, [dbName]: cols });
+        setCollections(prev => ({ ...prev, [dbName]: cols }));
       } catch (err) { message.error('加载集合失败: ' + err.message); }
-      setLoading({ ...loading, [dbName]: false });
+      setLoading(prev => ({ ...prev, [dbName]: false }));
     }
   };
 
@@ -48,11 +48,12 @@ export default function DbTree() {
   };
 
   const handleCreate = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() && !createModal.isNewDb) return;
     if (createModal.isNewDb && !newDbName.trim()) return;
     try {
       const dbName = createModal.isNewDb ? newDbName.trim() : createModal.dbName;
-      await window.__mongo.createCollection(activeConnectionId, dbName, newName.trim());
+      const colName = newName.trim() || '_default';
+      await window.__mongo.createCollection(activeConnectionId, dbName, colName);
       message.success(createModal.isNewDb ? '数据库和集合创建成功' : '集合创建成功');
       // 如果创建了新数据库，刷新数据库列表
       if (createModal.isNewDb) {
@@ -60,10 +61,10 @@ export default function DbTree() {
         setDatabases(dbs);
       }
       const cols = await window.__mongo.listCollections(activeConnectionId, dbName);
-      setCollections({ ...collections, [dbName]: cols });
-      setExpandedDbs({ ...expandedDbs, [dbName]: true });
+      setCollections(prev => ({ ...prev, [dbName]: cols }));
+      setExpandedDbs(prev => ({ ...prev, [dbName]: true }));
       setSelectedDb(dbName);
-      setSelectedCollection(newName.trim());
+      setSelectedCollection(colName);
       setDocuments([], 0);
       setCreateModal({ open: false, dbName: null, isNewDb: false });
       setNewName('');
@@ -77,15 +78,9 @@ export default function DbTree() {
         style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
       >
         <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>数据库</Text>
-        <Space size={4}>
-          <Button type="text" size="small" icon={<PlusOutlined />}
-            onClick={() => setCreateModal({ open: true, dbName: null, isNewDb: true })}
-            style={{ color: t.accent }} title="新建数据库" />
-          {selectedDb && (
-            <Button type="text" size="small" icon={<PlusOutlined />}
-              onClick={() => setCreateModal({ open: true, dbName: selectedDb, isNewDb: false })} />
-          )}
-        </Space>
+        <Button type="text" size="small" icon={<PlusOutlined />}
+          onClick={() => setCreateModal({ open: true, dbName: null, isNewDb: true })}
+          style={{ color: t.accent }} title="新建数据库（可选同时创建集合）" />
       </div>
 
       {databases.map(db => (
@@ -136,7 +131,12 @@ export default function DbTree() {
             >
               {expandedDbs[db.name] ? <DownOutlined style={{ fontSize: 10, color: t.text.subtle }} /> : <RightOutlined style={{ fontSize: 10, color: t.text.subtle }} />}
               <DatabaseOutlined style={{ color: t.accent }} />
-              <Text style={{ color: t.text.primary, fontSize: 13 }}>{db.name}</Text>
+              <Text style={{ color: t.text.primary, fontSize: 13, flex: 1 }}>{db.name}</Text>
+              {hoveredDb === db.name && (
+                <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 11 }} />}
+                  onClick={(e) => { e.stopPropagation(); setCreateModal({ open: true, dbName: db.name, isNewDb: false }); }}
+                  style={{ color: t.text.subtle, height: 20, width: 20 }} title="新建集合" />
+              )}
             </div>
           </Dropdown>
 
@@ -146,39 +146,49 @@ export default function DbTree() {
                 <div style={{ padding: '8px 16px' }}><Spin size="small" /></div>
               ) : (
                 (collections[db.name] || []).map(col => (
-                  <div
+                  <Dropdown
                     key={col.name}
-                    onClick={(e) => { e.stopPropagation(); selectCollection(db.name, col.name); }}
-                    onMouseEnter={() => setHoveredCol(col.name + db.name)}
-                    onMouseLeave={() => setHoveredCol(null)}
-                    onContextMenu={(e) => {
-                      e.preventDefault(); e.stopPropagation();
-                      Modal.confirm({
-                        title: `删除集合 "${col.name}"?`,
-                        content: '此操作不可撤销',
-                        okText: '删除', okType: 'danger', cancelText: '取消',
-                        onOk: async () => {
-                          try {
-                            await window.__mongo.dropCollection(activeConnectionId, db.name, col.name);
-                            message.success('已删除');
-                            setSelectedCollection(null);
-                            setDocuments([], 0);
-                            const cols = await window.__mongo.listCollections(activeConnectionId, db.name);
-                            setCollections({ ...collections, [db.name]: cols });
-                          } catch (err) { message.error('删除失败: ' + err.message); }
+                    menu={{
+                      items: [
+                        {
+                          key: 'delete', icon: <DeleteOutlined />, label: '删除集合', danger: true,
+                          onClick: () => {
+                            Modal.confirm({
+                              title: `删除集合 "${col.name}"?`,
+                              content: '此操作不可撤销',
+                              okText: '删除', okType: 'danger', cancelText: '取消',
+                              onOk: async () => {
+                                try {
+                                  await window.__mongo.dropCollection(activeConnectionId, db.name, col.name);
+                                  message.success('已删除');
+                                  setSelectedCollection(null);
+                                  setDocuments([], 0);
+                                  const cols = await window.__mongo.listCollections(activeConnectionId, db.name);
+                                  setCollections(prev => ({ ...prev, [db.name]: cols }));
+                                } catch (err) { message.error('删除失败: ' + err.message); }
+                              },
+                            });
+                          },
                         },
-                      });
+                      ],
                     }}
-                    style={{
-                      cursor: 'pointer', padding: '5px 16px', display: 'flex', alignItems: 'center', gap: 8,
-                      background: selectedCollection === col.name && selectedDb === db.name ? t.bg.highlight : (hoveredCol === col.name + db.name ? t.bg.hover : 'transparent'),
-                      borderLeft: selectedCollection === col.name && selectedDb === db.name ? `3px solid ${t.info}` : '3px solid transparent',
-                      transition: 'all 0.2s',
-                    }}
+                    trigger={['contextMenu']}
                   >
-                    <TableOutlined style={{ color: t.info }} />
-                    <Text style={{ color: t.text.listItem, fontSize: 13 }}>{col.name}</Text>
-                  </div>
+                    <div
+                      onClick={(e) => { e.stopPropagation(); selectCollection(db.name, col.name); }}
+                      onMouseEnter={() => setHoveredCol(col.name + db.name)}
+                      onMouseLeave={() => setHoveredCol(null)}
+                      style={{
+                        cursor: 'pointer', padding: '5px 16px', display: 'flex', alignItems: 'center', gap: 8,
+                        background: selectedCollection === col.name && selectedDb === db.name ? t.bg.highlight : (hoveredCol === col.name + db.name ? t.bg.hover : 'transparent'),
+                        borderLeft: selectedCollection === col.name && selectedDb === db.name ? `3px solid ${t.info}` : '3px solid transparent',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <TableOutlined style={{ color: t.info }} />
+                      <Text style={{ color: t.text.listItem, fontSize: 13 }}>{col.name}</Text>
+                    </div>
+                  </Dropdown>
                 ))
               )}
             </div>
@@ -191,11 +201,10 @@ export default function DbTree() {
         okText="创建" cancelText="取消">
         {createModal.isNewDb ? (
           <div>
-            <p style={{ color: t.text.secondary, marginBottom: 8 }}>MongoDB 中创建数据库需要同时创建一个集合</p>
             <Input placeholder="数据库名称" value={newDbName} onChange={e => setNewDbName(e.target.value)}
               style={{ marginBottom: 8 }} />
-            <Input placeholder="集合名称（表名）" value={newName} onChange={e => setNewName(e.target.value)}
-              onPressEnter={handleCreate} />
+            <Input placeholder="初始集合名称（可选，留空则创建 _default 集合）" value={newName}
+              onChange={e => setNewName(e.target.value)} onPressEnter={handleCreate} />
           </div>
         ) : (
           <div>

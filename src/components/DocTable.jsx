@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Table, Button, Space, Input, Select, Tag, Popconfirm, message, Tooltip, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CopyOutlined, CloseOutlined, CodeOutlined, SafetyCertificateOutlined, ThunderboltOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons';
 import useStore from '../store';
@@ -46,6 +46,29 @@ function buildFilter(conditions) {
   return filter;
 }
 
+// 推断字段类型（MongoDB BSON 类型）
+function inferFieldType(docs, field) {
+  const types = new Set();
+  for (const doc of docs) {
+    const val = doc[field];
+    if (val === null || val === undefined) continue;
+    if (typeof val === 'number') {
+      types.add(Number.isInteger(val) ? 'int32' : 'double');
+      break;
+    }
+    if (typeof val === 'boolean') { types.add('bool'); break; }
+    if (typeof val === 'string') {
+      if (/^[a-f\d]{24}$/i.test(val)) { types.add('objectId'); break; }
+      if (!isNaN(Date.parse(val))) { types.add('date'); break; }
+      types.add('string'); break;
+    }
+    if (Array.isArray(val)) { types.add('array'); break; }
+    if (typeof val === 'object') { types.add('object'); break; }
+  }
+  if (types.size === 0) return 'string';
+  return Array.from(types)[0];
+}
+
 export default function DocTable() {
   const {
     selectedDb, selectedCollection,
@@ -61,6 +84,18 @@ export default function DocTable() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [advancedJson, setAdvancedJson] = useState('');
   const [showFilter, setShowFilter] = useState(false);
+  const [shellCommand, setShellCommand] = useState('');
+  const [editingCell, setEditingCell] = useState(null); // { rowId, field }
+  const [editValue, setEditValue] = useState('');
+  const editingCellRef = useRef(null);
+  const editValueRef = useRef('');
+
+  // 生成 MongoDB Shell 命令
+  const buildShellCommand = (filterObj, isAdvanced) => {
+    if (!selectedDb || !selectedCollection) return '';
+    const filterStr = isAdvanced ? advancedJson.trim() : JSON.stringify(filterObj, null, 2);
+    return `db.${selectedCollection}.find(${filterStr})`;
+  };
 
   const loadData = async (p = page, filterObj = {}) => {
     if (!selectedDb || !selectedCollection) return;
@@ -78,6 +113,7 @@ export default function DocTable() {
 
   useEffect(() => {
     if (selectedDb && selectedCollection) loadData(1);
+    setShellCommand('');
   }, [selectedDb, selectedCollection, reloadKey]);
 
   useEffect(() => {
@@ -85,7 +121,7 @@ export default function DocTable() {
     const keys = new Set();
     documents.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') keys.add(k); }));
     setColumns(Array.from(keys).map(key => ({
-      title: key, dataIndex: key, key,
+      title: <span>{key} <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0 }}>{inferFieldType(documents, key)}</Tag></span>, dataIndex: key, key,
       width: 160, ellipsis: true,
       sorter: (a, b) => {
         const va = a[key], vb = b[key];
@@ -95,25 +131,82 @@ export default function DocTable() {
         if (typeof va === 'number' && typeof vb === 'number') return va - vb;
         return String(va).localeCompare(String(vb));
       },
-      render: (val) => renderCellValue(val),
+      render: (val, record) => {
+        const rowId = record._id ? String(record._id) : JSON.stringify(record);
+        const isEditing = editingCellRef.current?.rowId === rowId && editingCellRef.current?.field === key;
+        if (isEditing) {
+          return (
+            <Input
+              size="small"
+              value={editValueRef.current}
+              onChange={e => { editValueRef.current = e.target.value; setEditValue(e.target.value); }}
+              onPressEnter={() => saveEdit(record, key)}
+              onBlur={() => cancelEdit()}
+              autoFocus
+              style={{ width: '100%' }}
+            />
+          );
+        }
+        return renderCellValue(val, record, key);
+      },
     })));
   }, [documents]);
 
-  const renderCellValue = (val) => {
-    if (val === null) return <Text type="secondary" italic>null</Text>;
-    if (val === undefined) return <Text type="secondary" italic>undefined</Text>;
+  const renderCellValue = (val, record, field) => {
+    const startEdit = () => {
+      if (!record || !field) return;
+      const rowId = record._id ? String(record._id) : JSON.stringify(record);
+      const strVal = val === null || val === undefined ? '' : String(val);
+      editingCellRef.current = { rowId, field };
+      editValueRef.current = strVal;
+      setEditingCell({ rowId, field });
+      setEditValue(strVal);
+    };
+
+    if (val === null) return <Text type="secondary" italic onDoubleClick={startEdit} style={{ cursor: 'pointer' }}>null</Text>;
+    if (val === undefined) return <Text type="secondary" italic onDoubleClick={startEdit} style={{ cursor: 'pointer' }}>undefined</Text>;
     if (typeof val === 'object') {
       const str = JSON.stringify(val);
       return (
         <Tooltip title={<pre style={{ maxHeight: 300, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(val, null, 2)}</pre>}>
-          <Text style={{ color: t.info, cursor: 'pointer' }} ellipsis copyable>
+          <Text style={{ color: t.info, cursor: 'pointer' }} ellipsis copyable onDoubleClick={startEdit}>
             {str.length > 40 ? str.slice(0, 40) + '...' : str}
           </Text>
         </Tooltip>
       );
     }
     if (typeof val === 'boolean') return <Tag color={val ? 'green' : 'red'}>{String(val)}</Tag>;
-    return <Text>{String(val)}</Text>;
+    return <Text style={{ cursor: 'pointer' }} onDoubleClick={startEdit}>{String(val)}</Text>;
+  };
+
+  const saveEdit = async (record, field) => {
+    if (!editingCellRef.current) return;
+    const val = editValueRef.current;
+    try {
+      const update = { ...record, [field]: val };
+      // 尝试转换数字
+      const num = Number(val);
+      if (val !== '' && !isNaN(num)) update[field] = num;
+      else if (val === 'true') update[field] = true;
+      else if (val === 'false') update[field] = false;
+      else if (val === 'null') update[field] = null;
+      else update[field] = val;
+
+      await window.__mongo.updateDocument(activeConnectionId, selectedDb, selectedCollection, { _id: record._id }, { [field]: update[field] });
+      message.success('已更新');
+      editingCellRef.current = null;
+      setEditingCell(null);
+      loadData(page, buildFilter(conditions));
+    } catch (err) {
+      message.error('更新失败: ' + err.message);
+    }
+  };
+
+  const cancelEdit = () => {
+    editingCellRef.current = null;
+    editValueRef.current = '';
+    setEditingCell(null);
+    setEditValue('');
   };
 
   const handleSearch = () => {
@@ -124,6 +217,7 @@ export default function DocTable() {
           setFilter(advancedJson);
           setPage(1);
           loadData(1, parsed);
+          setShellCommand(buildShellCommand(parsed, true));
         } else {
           message.warning('必须是 JSON 对象');
         }
@@ -134,6 +228,7 @@ export default function DocTable() {
     setFilter(JSON.stringify(filterObj));
     setPage(1);
     loadData(1, filterObj);
+    setShellCommand(buildShellCommand(filterObj, false));
   };
 
   const handleReset = () => {
@@ -142,6 +237,7 @@ export default function DocTable() {
     setFilter('');
     setPage(1);
     loadData(1, {});
+    setShellCommand('');
   };
 
   const handleDelete = async (record) => {
@@ -239,6 +335,25 @@ export default function DocTable() {
               <Button onClick={() => setShowAdvanced(false)} size="small">简易</Button>
             </Space>
           )}
+        </div>
+      )}
+
+      {/* Shell 命令展示 */}
+      {shellCommand && showFilter && (
+        <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CodeOutlined style={{ color: t.text.subtle, fontSize: 12 }} />
+          <pre style={{
+            margin: 0, padding: '4px 8px', background: t.bg.code, color: t.accent,
+            borderRadius: 4, fontSize: 12, fontFamily: 'Consolas, Monaco, monospace',
+            flex: 1, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+          }}>{shellCommand}</pre>
+          <Button
+            type="text"
+            size="small"
+            icon={<CopyOutlined />}
+            onClick={() => { navigator.clipboard.writeText(shellCommand); message.success('已复制'); }}
+            style={{ color: t.text.subtle, flexShrink: 0 }}
+          />
         </div>
       )}
 

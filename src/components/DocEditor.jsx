@@ -7,13 +7,29 @@ import { useTheme } from '../theme';
 const { Text } = Typography;
 
 const TYPE_OPTIONS = [
-  { label: 'String', value: 'string' },
-  { label: 'Number', value: 'number' },
-  { label: 'Boolean', value: 'boolean' },
-  { label: 'Object', value: 'object' },
   { label: 'Array', value: 'array' },
-  { label: 'null', value: 'null' },
+  { label: 'Binary', value: 'binary' },
+  { label: 'Boolean', value: 'bool' },
+  { label: 'Code', value: 'code' },
+  { label: 'Date', value: 'date' },
+  { label: 'Decimal128', value: 'decimal' },
+  { label: 'Double', value: 'double' },
+  { label: 'Int32', value: 'int32' },
+  { label: 'Int64', value: 'int64' },
+  { label: 'MaxKey', value: 'maxKey' },
+  { label: 'MinKey', value: 'minKey' },
+  { label: 'Null', value: 'null' },
+  { label: 'Object', value: 'object' },
   { label: 'ObjectId', value: 'objectId' },
+  { label: 'BSONRegExp', value: 'regex' },
+  { label: 'String', value: 'string' },
+  { label: 'BSONSymbol', value: 'symbol' },
+  { label: 'Timestamp', value: 'timestamp' },
+  { label: 'Undefined', value: 'undefined' },
+  { label: 'UUID', value: 'uuid' },
+  { label: 'LegacyJavaUUID', value: 'uuidLegacyJava' },
+  { label: 'LegacyCSharpUUID', value: 'uuidLegacyCSharp' },
+  { label: 'LegacyPythonUUID', value: 'uuidLegacyPython' },
 ];
 
 function inferType(val) {
@@ -21,8 +37,9 @@ function inferType(val) {
   if (val._bsontype === 'ObjectId' || (typeof val === 'string' && /^[a-f\d]{24}$/i.test(val))) return 'objectId';
   if (Array.isArray(val)) return 'array';
   if (typeof val === 'object') return 'object';
-  if (typeof val === 'boolean') return 'boolean';
-  if (typeof val === 'number') return 'number';
+  if (typeof val === 'boolean') return 'bool';
+  if (typeof val === 'number') return Number.isInteger(val) ? 'int32' : 'double';
+  if (typeof val === 'string' && !isNaN(Date.parse(val))) return 'date';
   return 'string';
 }
 
@@ -35,8 +52,12 @@ function formatValue(val, type) {
 
 function parseValue(val, type) {
   switch (type) {
-    case 'number': return Number(val);
-    case 'boolean': return val === 'true';
+    case 'int32': return parseInt(val, 10);
+    case 'int64': return Number(val);
+    case 'double': return Number(val);
+    case 'decimal': return Number(val);
+    case 'bool': return val === 'true';
+    case 'date': return new Date(val).toISOString();
     case 'object':
     case 'array': return JSON.parse(val);
     case 'null': return null;
@@ -60,7 +81,9 @@ export default function DocEditor() {
 
   useEffect(() => {
     if (editingDoc && editingMode) {
-      const list = Object.entries(editingDoc).map(([key, value]) => ({
+      const list = Object.entries(editingDoc)
+        .filter(([key]) => key !== '_id')
+        .map(([key, value]) => ({
         key,
         type: inferType(value),
         value: formatValue(value),
@@ -121,11 +144,6 @@ export default function DocEditor() {
         <Button key="save" type="primary" loading={saving} onClick={handleSave}>{editingMode === 'edit' ? '保存' : '创建'}</Button>,
       ]}>
       <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
-        {editingMode === 'edit' && editingDoc?._id && (
-          <div style={{ marginBottom: 12, padding: '4px 8px', background: t.bg.sidebar, borderRadius: 4 }}>
-            <Text type="secondary">_id: </Text><Text code style={{ color: t.accent }}>{editingDoc._id}</Text>
-          </div>
-        )}
         {fields.map((field, index) => (
           <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <Select
@@ -140,7 +158,7 @@ export default function DocEditor() {
               disabled={editingMode === 'edit' && field.originalKey === '_id'}
             />
             <Select value={field.type} onChange={v => updateField(index, 'type', v)}
-              style={{ width: 100 }} size="middle" options={TYPE_OPTIONS} />
+              style={{ width: 170 }} size="middle" options={TYPE_OPTIONS} />
             <Input placeholder="值" value={field.value} onChange={e => updateField(index, 'value', e.target.value)}
               style={{ flex: 1 }}
               disabled={field.type === 'null'}

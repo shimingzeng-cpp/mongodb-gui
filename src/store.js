@@ -4,8 +4,8 @@ import { create } from 'zustand';
 const loadTheme = () => {
   try {
     const saved = localStorage.getItem('theme');
-    return saved === 'light' || saved === 'dark' ? saved : 'dark';
-  } catch { return 'dark'; }
+    return saved === 'light' || saved === 'dark' ? saved : 'light';
+  } catch { return 'light'; }
 };
 
 // 从 localStorage 加载 AI 配置
@@ -139,6 +139,9 @@ const useStore = create((set) => ({
     localStorage.setItem('aiConfig', JSON.stringify(config));
     set({ aiConfig: config });
   },
+
+  aiOpen: false,
+  setAiOpen: (val) => set({ aiOpen: val }),
 
   // ========== 主题 ==========
   theme: loadTheme(),

@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import { Layout, ConfigProvider, theme, App as AntApp, Button, Typography, Card, Space } from 'antd';
-import { PlusOutlined, LinkOutlined } from '@ant-design/icons';
+import { PlusOutlined, LinkOutlined, RobotOutlined } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import ConnectionBar from './components/ConnectionBar';
 import ConnectionList from './components/ConnectionList';
@@ -8,6 +8,7 @@ import DbTree from './components/DbTree';
 import DocTable from './components/DocTable';
 import DocEditor from './components/DocEditor';
 import ShellPanel from './components/ShellPanel';
+import ChatPanel from './components/ChatPanel';
 import SettingsModal from './components/SettingsModal';
 import HelpModal from './components/HelpModal';
 import SchemaModal from './components/SchemaModal';
@@ -84,32 +85,9 @@ function WelcomeScreen() {
 export default function App() {
   const connected = useStore((s) => s.connected);
   const appTheme = useStore((s) => s.theme);
+  const aiOpen = useStore((s) => s.aiOpen);
   const t = useTheme();
   const [collapsed, setCollapsed] = useState(false);
-  const [shellHeight, setShellHeight] = useState(250);
-  const [dragging, setDragging] = useState(false);
-  const draggingRef = useRef(false);
-  const shellHeightRef = useRef(250);
-
-  const handleMouseDown = useCallback(() => {
-    draggingRef.current = true;
-    setDragging(true);
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    draggingRef.current = false;
-    setDragging(false);
-  }, []);
-
-  const handleMouseMove = useCallback((e) => {
-    if (!draggingRef.current) return;
-    const container = document.getElementById('right-panel');
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const newHeight = Math.max(100, Math.min(rect.height - 200, rect.bottom - e.clientY));
-    shellHeightRef.current = newHeight;
-    setShellHeight(newHeight);
-  }, []);
 
   return (
     <ConfigProvider
@@ -150,26 +128,13 @@ export default function App() {
             <Content
               id="right-panel"
               style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
             >
               {connected ? (
                 <>
-                  <div style={{ flex: 1, overflow: 'auto', padding: 16, minHeight: 0, overflowX: 'hidden' }}>
+                  <div style={{ flex: 1, overflow: 'hidden', padding: 16, minHeight: 0 }}>
                     <DocTable />
                   </div>
-                  {/* 拖动分隔条 */}
-                  <div
-                    onMouseDown={handleMouseDown}
-                    style={{
-                      height: 4, cursor: 'row-resize', background: dragging ? t.accent : t.border,
-                      flexShrink: 0, transition: dragging ? 'none' : 'background 0.2s',
-                    }}
-                    onMouseEnter={e => { if (!dragging) e.target.style.background = t.accent; }}
-                    onMouseLeave={e => { if (!dragging) e.target.style.background = t.border; }}
-                  />
-                  <div style={{ height: shellHeight, flexShrink: 0, overflow: 'hidden', overflowX: 'hidden' }}>
+                  <div style={{ height: 350, flexShrink: 0, overflow: 'hidden' }}>
                     <ShellPanel />
                   </div>
                 </>
@@ -177,6 +142,29 @@ export default function App() {
                 <WelcomeScreen />
               )}
             </Content>
+
+            {/* AI 助手侧边栏 */}
+            {aiOpen && (
+              <div style={{
+                width: 320, borderLeft: `1px solid ${t.border}`,
+                background: t.bg.sidebar, display: 'flex', flexDirection: 'column', flexShrink: 0,
+              }}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '8px 12px', borderBottom: `1px solid ${t.border}`,
+                }}>
+                  <Space>
+                    <RobotOutlined style={{ color: t.info }} />
+                    <Text strong style={{ color: t.text.primary, fontSize: 13 }}>AI 助手</Text>
+                  </Space>
+                  <Button type="text" size="small" onClick={() => useStore.getState().setAiOpen(false)}
+                    style={{ color: t.text.secondary, fontSize: 16, lineHeight: 1 }}>✕</Button>
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <ChatPanel />
+                </div>
+              </div>
+            )}
           </Layout>
         </Layout>
         <DocEditor />
