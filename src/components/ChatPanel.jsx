@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input, Button, Space, Typography, message, Spin, Tag } from 'antd';
-import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined } from '@ant-design/icons';
+import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 const { chatCompletion, buildSystemPrompt } = window.__ai;
@@ -8,7 +8,7 @@ const { chatCompletion, buildSystemPrompt } = window.__ai;
 const { Text } = Typography;
 
 export default function ChatPanel() {
-  const { selectedDb, documents, aiConfig, activeConnectionId } = useStore();
+  const { selectedDb, documents, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb } = useStore();
   const t = useTheme();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -62,20 +62,28 @@ export default function ChatPanel() {
         parsed = JSON.parse(reply);
       } catch {
         // 如果不是 JSON，当作纯文本回复
-        parsed = { reply: reply, command: '' };
+        parsed = { reply: reply, command: '', action: '' };
       }
 
       const aiMsg = {
         role: 'assistant',
         content: parsed.reply || reply,
         command: parsed.command || '',
+        action: parsed.action || '',
         time: Date.now(),
         executed: false,
       };
       setMessages(prev => [...prev, aiMsg]);
 
-      // 自动执行命令
-      if (parsed.command && parsed.command.trim()) {
+      // 处理 action（UI 操作）
+      if (parsed.action === 'backup') {
+        setBackupOpen(true);
+        aiMsg.executed = true;
+      } else if (parsed.action === 'restore') {
+        setBackupOpen(true);
+        aiMsg.executed = true;
+      } else if (parsed.command && parsed.command.trim()) {
+        // 自动执行 shell 命令
         await executeCommand(parsed.command, aiMsg);
       }
     } catch (err) {
@@ -92,27 +100,13 @@ export default function ChatPanel() {
   const executeCommand = async (command, msgObj) => {
     try {
       const result = await window.__mongo.executeShell(activeConnectionId, selectedDb, command);
-      const idx = messages.findIndex(m => m.time === msgObj.time);
-      if (idx >= 0) {
-        const updated = [...messages];
-        updated[idx] = {
-          ...updated[idx],
-          executed: true,
-          execResult: result,
-        };
-        setMessages(updated);
-      }
+      setMessages(prev => prev.map(m =>
+        m.time === msgObj.time ? { ...m, executed: true, execResult: result } : m
+      ));
     } catch (err) {
-      const idx = messages.findIndex(m => m.time === msgObj.time);
-      if (idx >= 0) {
-        const updated = [...messages];
-        updated[idx] = {
-          ...updated[idx],
-          executed: true,
-          execResult: { success: false, error: err.message },
-        };
-        setMessages(updated);
-      }
+      setMessages(prev => prev.map(m =>
+        m.time === msgObj.time ? { ...m, executed: true, execResult: { success: false, error: err.message } } : m
+      ));
     }
   };
 
@@ -174,7 +168,9 @@ export default function ChatPanel() {
               试着问我：<br />
               "查询所有玩家"<br />
               "新增一个玩家"<br />
-              "统计玩家数量"
+              "统计玩家数量"<br />
+              "备份当前数据库"<br />
+              "恢复数据"
             </div>
           </div>
         )}
@@ -220,6 +216,16 @@ export default function ChatPanel() {
                     >
                       执行命令
                     </Button>
+                  )}
+                  {msg.action === 'backup' && msg.executed && (
+                    <div style={{ marginTop: 6 }}>
+                      <Tag color="blue" icon={<DownloadOutlined />}>已打开备份面板</Tag>
+                    </div>
+                  )}
+                  {msg.action === 'restore' && msg.executed && (
+                    <div style={{ marginTop: 6 }}>
+                      <Tag color="blue" icon={<DownloadOutlined />}>已打开恢复面板</Tag>
+                    </div>
                   )}
                 </div>
               </div>
