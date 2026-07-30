@@ -27,11 +27,7 @@
 
 ### 方式一：直接下载安装包
 
-1. 前往 [Releases](https://github.com/shimingzeng-cpp/mongodb-gui/releases) 页面下载最新版本
-2. 根据操作系统选择对应安装包：
-   - Windows：`.exe` 安装程序
-   - macOS：`.dmg` 安装包
-   - Linux：`.AppImage` 或 `.deb`
+从 [Releases](https://github.com/shimingzeng-cpp/mongodb-gui/releases) 页面下载最新版本，或直接使用源码构建（见方式二）。
 
 ### 方式二：源码运行
 

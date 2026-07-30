@@ -8,6 +8,27 @@
     "build": "vite build && electron-builder",
     "start": "electron ."
   },
+  "build": {
+    "appId": "com.mongodb-gui.app",
+    "productName": "MongoDB GUI",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  },
   "dependencies": {
     "@ant-design/icons": "^5.5.0",
     "antd": "^5.29.3",
@@ -20,6 +41,7 @@
     "@vitejs/plugin-react": "^4.3.0",
     "concurrently": "^9.1.0",
     "electron": "^33.0.0",
+    "electron-builder": "^26.15.3",
     "vite": "^6.0.0",
     "wait-on": "^8.0.0"
   }
