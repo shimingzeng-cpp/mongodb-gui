@@ -62,16 +62,20 @@ export default function ChatPanel() {
         parsed = JSON.parse(reply);
       } catch {
         // 如果不是 JSON，当作纯文本回复
-        parsed = { reply: reply, command: '', action: '' };
+        parsed = { reply: reply, commands: [], action: '' };
       }
+
+      // 兼容旧格式：如果返回的是单条 command 而非 commands 数组
+      const commands = parsed.commands || (parsed.command ? [parsed.command] : []);
 
       const aiMsg = {
         role: 'assistant',
         content: parsed.reply || reply,
-        command: parsed.command || '',
+        commands: commands,
         action: parsed.action || '',
         time: Date.now(),
         executed: false,
+        execResults: [],
       };
       setMessages(prev => [...prev, aiMsg]);
 
@@ -82,9 +86,15 @@ export default function ChatPanel() {
       } else if (parsed.action === 'restore') {
         setBackupOpen(true);
         aiMsg.executed = true;
-      } else if (parsed.command && parsed.command.trim()) {
-        // 自动执行 shell 命令
-        await executeCommand(parsed.command, aiMsg);
+      }
+
+      // 自动执行所有命令（按顺序）
+      if (commands.length > 0) {
+        for (const cmd of commands) {
+          if (cmd.trim()) {
+            await executeCommand(cmd, aiMsg);
+          }
+        }
       }
     } catch (err) {
       setMessages(prev => [...prev, {
@@ -100,13 +110,17 @@ export default function ChatPanel() {
   const executeCommand = async (command, msgObj) => {
     try {
       const result = await window.__mongo.executeShell(activeConnectionId, selectedDb, command);
-      setMessages(prev => prev.map(m =>
-        m.time === msgObj.time ? { ...m, executed: true, execResult: result } : m
-      ));
+      setMessages(prev => prev.map(m => {
+        if (m.time !== msgObj.time) return m;
+        const results = [...(m.execResults || []), result];
+        return { ...m, execResults: results, executed: true };
+      }));
     } catch (err) {
-      setMessages(prev => prev.map(m =>
-        m.time === msgObj.time ? { ...m, executed: true, execResult: { success: false, error: err.message } } : m
-      ));
+      setMessages(prev => prev.map(m => {
+        if (m.time !== msgObj.time) return m;
+        const results = [...(m.execResults || []), { success: false, error: err.message }];
+        return { ...m, execResults: results, executed: true };
+      }));
     }
   };
 
@@ -119,18 +133,18 @@ export default function ChatPanel() {
 
   const clearChat = () => setMessages([]);
 
-  const renderExecResult = (result) => {
+  const renderExecResult = (result, idx) => {
     if (!result) return null;
     if (!result.success) {
-      return <Text type="danger" style={{ fontSize: 12 }}>❌ {result.error}</Text>;
+      return <Text key={idx} type="danger" style={{ fontSize: 12 }}>❌ {result.error}</Text>;
     }
     const data = result.data;
     if (data === undefined || data === null) {
-      return <Tag color="success">✅ 执行成功</Tag>;
+      return <Tag key={idx} color="success">✅ 执行成功</Tag>;
     }
     if (Array.isArray(data)) {
       return (
-        <div style={{ marginTop: 4 }}>
+        <div key={idx} style={{ marginTop: 4 }}>
           <Tag color="success">✅ 返回 {data.length} 条</Tag>
           <pre style={{
             background: t.bg.code, color: t.accent, padding: 8, borderRadius: 4,
@@ -143,7 +157,7 @@ export default function ChatPanel() {
       );
     }
     return (
-      <div style={{ marginTop: 4 }}>
+      <div key={idx} style={{ marginTop: 4 }}>
         <Tag color="success">✅ 执行成功</Tag>
         <pre style={{
           background: t.bg.code, color: t.accent, padding: 8, borderRadius: 4,
@@ -163,14 +177,14 @@ export default function ChatPanel() {
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', color: t.text.muted, padding: 40, fontSize: 13 }}>
             <RobotOutlined style={{ fontSize: 32, marginBottom: 12 }} />
-            <div>AI 助手已就绪</div>
+            <div>AI Agent 已就绪，可以直接操作数据库</div>
             <div style={{ marginTop: 8, fontSize: 12 }}>
-              试着问我：<br />
+              试试对我说：<br />
               "查询所有玩家"<br />
-              "新增一个玩家"<br />
-              "统计玩家数量"<br />
-              "备份当前数据库"<br />
-              "恢复数据"
+              "新增一个玩家叫张三，20岁"<br />
+              "把张三年龄改成25"<br />
+              "统计一共有多少玩家"<br />
+              "备份当前数据库"
             </div>
           </div>
         )}
@@ -200,18 +214,26 @@ export default function ChatPanel() {
                   <Text style={{ color: msg.isError ? t.error : t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>
                     {msg.content}
                   </Text>
-                  {msg.command && (
-                    <div style={{ marginTop: 6, padding: '4px 8px', background: t.bg.code, borderRadius: 4 }}>
-                      <Text code style={{ color: t.accent, fontSize: 12 }}>{msg.command}</Text>
+                  {msg.commands && msg.commands.length > 0 && (
+                    <div style={{ marginTop: 6 }}>
+                      {msg.commands.map((cmd, i) => (
+                        <div key={i} style={{ padding: '2px 8px', background: t.bg.code, borderRadius: 4, marginBottom: 2 }}>
+                          <Text code style={{ color: t.accent, fontSize: 12 }}>{cmd}</Text>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  {msg.executed && renderExecResult(msg.execResult)}
-                  {msg.command && !msg.executed && (
+                  {msg.executed && msg.execResults && msg.execResults.map((r, i) => renderExecResult(r, i))}
+                  {msg.commands && msg.commands.length > 0 && !msg.executed && (
                     <Button
                       size="small"
                       type="link"
                       icon={<PlayCircleOutlined />}
-                      onClick={() => executeCommand(msg.command, msg)}
+                      onClick={async () => {
+                        for (const cmd of msg.commands) {
+                          if (cmd.trim()) await executeCommand(cmd, msg);
+                        }
+                      }}
                       style={{ padding: 0, marginTop: 4, fontSize: 12 }}
                     >
                       执行命令
