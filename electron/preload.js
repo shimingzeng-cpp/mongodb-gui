@@ -30,4 +30,8 @@ window.__dialog = {
     const { ipcRenderer } = require('electron');
     return await ipcRenderer.invoke('dialog:openFile', { filters });
   },
+  selectDirectory: async () => {
+    const { ipcRenderer } = require('electron');
+    return await ipcRenderer.invoke('dialog:selectDirectory');
+  },
 };

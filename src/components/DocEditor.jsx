@@ -71,16 +71,31 @@ export default function DocEditor() {
   const t = useTheme();
   const [fields, setFields] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [schemaFields, setSchemaFields] = useState([]);
 
-  // 从已有文档中提取字段名
+  // 从已有文档和 Schema 定义中提取字段名
   const fieldNames = React.useMemo(() => {
     const names = new Set();
     documents.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') names.add(k); }));
+    schemaFields.forEach(f => { if (f) names.add(f); });
     return Array.from(names).map(n => ({ label: n, value: n }));
-  }, [documents]);
+  }, [documents, schemaFields]);
 
   useEffect(() => {
     if (editingDoc && editingMode) {
+      // 加载 Schema 字段定义
+      if (selectedDb && selectedCollection) {
+        window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection)
+          .then(schema => {
+            if (schema.validator && schema.validator.$jsonSchema) {
+              const props = schema.validator.$jsonSchema.properties || {};
+              const names = Object.keys(props).filter(k => k !== '_id');
+              setSchemaFields(names);
+            }
+          })
+          .catch(() => {});
+      }
+
       const list = Object.entries(editingDoc)
         .filter(([key]) => key !== '_id')
         .map(([key, value]) => ({
@@ -90,8 +105,11 @@ export default function DocEditor() {
         originalKey: key,
       }));
       setFields(list.length > 0 ? list : [{ key: '', type: 'string', value: '' }]);
-    } else { setFields([]); }
-  }, [editingDoc, editingMode]);
+    } else {
+      setFields([]);
+      setSchemaFields([]);
+    }
+  }, [editingDoc, editingMode, selectedDb, selectedCollection]);
 
   const handleClose = () => setEditingDoc(null, null);
 
@@ -159,10 +177,9 @@ export default function DocEditor() {
             />
             <Select value={field.type} onChange={v => updateField(index, 'type', v)}
               style={{ width: 170 }} size="middle" options={TYPE_OPTIONS} />
-            <Input placeholder="值" value={field.value} onChange={e => updateField(index, 'value', e.target.value)}
+            <Input placeholder={field.type === 'object' ? '{"key": "value"}' : field.type === 'array' ? '[1, 2, 3]' : field.type === 'boolean' ? 'true / false' : '值'} value={field.value} onChange={e => updateField(index, 'value', e.target.value)}
               style={{ flex: 1 }}
-              disabled={field.type === 'null'}
-              placeholder={field.type === 'object' ? '{"key": "value"}' : field.type === 'array' ? '[1, 2, 3]' : field.type === 'boolean' ? 'true / false' : '值'} />
+              disabled={field.type === 'null'} />
             <Button icon={<DeleteOutlined />} danger type="text" onClick={() => removeField(index)}
               disabled={editingMode === 'edit' && field.originalKey === '_id'} />
           </div>

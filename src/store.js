@@ -107,6 +107,15 @@ const useStore = create((set) => ({
   setSelectedDb: (val) => set({ selectedDb: val, selectedCollection: null }),
   setSelectedCollection: (val) => set({ selectedCollection: val }),
 
+  // 关闭集合/数据库（清除文档和上下文）
+  closeCollection: () => set({
+    selectedCollection: null, documents: [], totalDocs: 0, page: 1, filter: '',
+  }),
+  closeDb: () => set({
+    selectedDb: null, selectedCollection: null,
+    documents: [], totalDocs: 0, page: 1, filter: '',
+  }),
+
   // ========== 文档数据 ==========
   documents: [],
   totalDocs: 0,
@@ -187,6 +196,18 @@ const useStore = create((set) => ({
   syncResult: null,   // { success, summary }
   setSyncProgress: (val) => set({ syncProgress: val }),
   setSyncResult: (val) => set({ syncResult: val }),
+
+  // ========== 备份/恢复 ==========
+  backupOpen: false,
+  setBackupOpen: (val) => set({ backupOpen: val }),
+
+  backupProgress: null,    // { total, current, status, collectionName }
+  backupResult: null,      // { success, summary } | { success, error }
+  setBackupProgress: (val) => set({ backupProgress: val }),
+  setBackupResult: (val) => set({ backupResult: val }),
+
+  backupSelectedDb: null,  // 备份模态框内选择的数据库
+  setBackupSelectedDb: (val) => set({ backupSelectedDb: val }),
 }));
 
 export default useStore;

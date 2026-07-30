@@ -76,6 +76,17 @@ ipcMain.handle('dialog:openFile', async (event, { filters }) => {
   return { success: false, canceled: true };
 });
 
+// IPC: 选择目录
+ipcMain.handle('dialog:selectDirectory', async (event) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    return { success: true, directory: result.filePaths[0] };
+  }
+  return { success: false, canceled: true };
+});
+
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {

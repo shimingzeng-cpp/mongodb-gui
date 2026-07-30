@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Space, Tag, message, Select, Typography, Input } from 'antd';
-import { LinkOutlined, DisconnectOutlined, SettingOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined, SunOutlined, MoonOutlined, DatabaseOutlined, RobotOutlined } from '@ant-design/icons';
+import { LinkOutlined, DisconnectOutlined, SettingOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined, SunOutlined, MoonOutlined, DatabaseOutlined, RobotOutlined, DownloadOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
@@ -11,7 +11,7 @@ export default function ConnectionBar() {
     connected, connections, activeConnectionId, connectionLoading,
     setConnected, setUri, setActiveConnectionId, setConnectionLoading,
     setDatabases, setSelectedDb, setSelectedCollection,
-    setDocuments, setPage, setSettingsOpen, doRefresh, setHelpOpen, setSyncOpen,
+    setDocuments, setPage, setSettingsOpen, doRefresh, setHelpOpen, setSyncOpen, setBackupOpen,
     addConnection, theme: appTheme, toggleTheme, aiOpen, setAiOpen,
   } = useStore();
   const t = useTheme();
@@ -107,6 +107,7 @@ export default function ConnectionBar() {
       {connected ? (
         <Space>
           <Tag color="green" style={{ marginRight: 0 }}>已连接 {activeConn?.name}</Tag>
+          <Button icon={<DownloadOutlined />} onClick={() => setBackupOpen(true)} size="small">备份</Button>
           <Button icon={<SwapOutlined />} onClick={() => setSyncOpen(true)} size="small">同步</Button>
           <Button danger icon={<DisconnectOutlined />} onClick={handleDisconnect} size="small">断开</Button>
         </Space>

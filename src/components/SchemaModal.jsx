@@ -9,7 +9,7 @@ const { Text, Title } = Typography;
 const BSON_TYPES = ['string', 'int', 'double', 'bool', 'object', 'array', 'date', 'objectId', 'null'];
 
 export default function SchemaModal() {
-  const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, documents, activeConnectionId } = useStore();
+  const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId } = useStore();
   const t = useTheme();
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -18,13 +18,6 @@ export default function SchemaModal() {
   const [properties, setProperties] = useState([]);
   const [showJson, setShowJson] = useState(false);
   const [jsonText, setJsonText] = useState('');
-
-  // 从当前文档中提取所有字段名
-  const fieldNames = React.useMemo(() => {
-    const names = new Set();
-    documents.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') names.add(k); }));
-    return Array.from(names).map(n => ({ label: n, value: n }));
-  }, [documents]);
 
   useEffect(() => {
     if (schemaOpen && selectedDb && selectedCollection) {
@@ -66,10 +59,11 @@ export default function SchemaModal() {
           if (!p.name) return;
           props[p.name] = { bsonType: p.type };
         });
+        const required = requiredFields.filter(f => f.trim());
         validator = {
           $jsonSchema: {
             bsonType: 'object',
-            required: requiredFields.filter(f => f.trim()),
+            ...(required.length > 0 ? { required } : {}),
             properties: props,
           },
         };
@@ -126,15 +120,12 @@ export default function SchemaModal() {
             <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>必填字段 (required)</Text>
             {requiredFields.map((f, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <Select
-                  value={f || undefined}
-                  onChange={v => updateRequired(i, v)}
-                  placeholder="选择字段"
+                <Input
+                  value={f}
+                  onChange={e => updateRequired(i, e.target.value)}
+                  placeholder="输入字段名"
                   size="small"
                   style={{ width: 200 }}
-                  options={fieldNames}
-                  showSearch
-                  allowClear
                 />
                 <Button icon={<DeleteOutlined />} size="small" danger type="text" onClick={() => removeRequired(i)} />
               </div>
@@ -147,15 +138,12 @@ export default function SchemaModal() {
             <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>字段定义</Text>
             {properties.map((p, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
-                <Select
-                  value={p.name || undefined}
-                  onChange={v => updateProperty(i, 'name', v)}
-                  placeholder="选择字段"
+                <Input
+                  value={p.name}
+                  onChange={e => updateProperty(i, 'name', e.target.value)}
+                  placeholder="输入字段名"
                   size="small"
                   style={{ width: 160 }}
-                  options={fieldNames}
-                  showSearch
-                  allowClear
                 />
                 <Select value={p.type} onChange={v => updateProperty(i, 'type', v)} size="small" style={{ width: 100 }} options={BSON_TYPES.map(t => ({ label: t, value: t }))} />
                 <Button icon={<DeleteOutlined />} size="small" danger type="text" onClick={() => removeProperty(i)} />

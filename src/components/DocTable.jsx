@@ -282,14 +282,12 @@ export default function DocTable() {
             <div>
               {conditions.map((c, i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                  <Select
-                    value={c.field || undefined}
-                    onChange={v => updateCondition(i, 'field', v)}
-                    placeholder="选择字段"
+                  <Input
+                    value={c.field}
+                    onChange={e => updateCondition(i, 'field', e.target.value)}
+                    placeholder={fieldNames.length > 0 ? `字段名，如 ${fieldNames[0]}` : '输入字段名'}
                     style={{ width: 140 }}
                     size="small"
-                    options={fieldNames.map(f => ({ label: f, value: f }))}
-                    showSearch
                   />
                   <Select
                     value={c.operator}

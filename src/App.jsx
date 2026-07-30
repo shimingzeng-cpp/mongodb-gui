@@ -15,6 +15,7 @@ import SchemaModal from './components/SchemaModal';
 import IndexModal from './components/IndexModal';
 import ExportImportModal from './components/ExportImportModal';
 import SyncModal from './components/SyncModal';
+import BackupModal from './components/BackupModal';
 import useStore from './store';
 import { useTheme } from './theme';
 
@@ -174,6 +175,7 @@ export default function App() {
         <IndexModal />
         <ExportImportModal />
         <SyncModal />
+        <BackupModal />
       </AntApp>
     </ConfigProvider>
   );

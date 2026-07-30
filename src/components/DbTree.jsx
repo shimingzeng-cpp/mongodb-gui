@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button, message, Spin, Typography, Modal, Input, Dropdown, Space } from 'antd';
-import { DatabaseOutlined, TableOutlined, PlusOutlined, RightOutlined, DownOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, TableOutlined, PlusOutlined, RightOutlined, DownOutlined, DeleteOutlined, ReloadOutlined, CloseOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
 const { Text } = Typography;
 
 export default function DbTree() {
-  const { databases, selectedDb, selectedCollection, setSelectedDb, setSelectedCollection, connected, setPage, setDocuments, refreshKey, setDatabases, activeConnectionId } = useStore();
+  const { databases, selectedDb, selectedCollection, setSelectedDb, setSelectedCollection, connected, setPage, setDocuments, refreshKey, setDatabases, activeConnectionId, closeDb, closeCollection } = useStore();
   const t = useTheme();
   const [expandedDbs, setExpandedDbs] = useState({});
   const [collections, setCollections] = useState({});
@@ -144,11 +144,25 @@ export default function DbTree() {
             >
               {expandedDbs[db.name] ? <DownOutlined style={{ fontSize: 10, color: t.text.subtle }} /> : <RightOutlined style={{ fontSize: 10, color: t.text.subtle }} />}
               <DatabaseOutlined style={{ color: t.accent }} />
+              {selectedDb === db.name && !selectedCollection && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: t.accent, flexShrink: 0 }} />
+              )}
               <Text style={{ color: t.text.primary, fontSize: 13, flex: 1 }}>{db.name}</Text>
               {hoveredDb === db.name && (
-                <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 11 }} />}
-                  onClick={(e) => { e.stopPropagation(); setCreateModal({ open: true, dbName: db.name, isNewDb: false }); }}
-                  style={{ color: t.text.subtle, height: 20, width: 20 }} title="新建集合" />
+                <Space size={2}>
+                  <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 11 }} />}
+                    onClick={(e) => { e.stopPropagation(); setCreateModal({ open: true, dbName: db.name, isNewDb: false }); }}
+                    style={{ color: t.text.subtle, height: 20, width: 20 }} title="新建集合" />
+                  {selectedDb === db.name && (
+                    <Button type="text" size="small" icon={<CloseOutlined style={{ fontSize: 11 }} />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        closeDb();
+                        setExpandedDbs(prev => ({ ...prev, [db.name]: false }));
+                      }}
+                      style={{ color: t.text.subtle, height: 20, width: 20 }} title="关闭数据库" />
+                  )}
+                </Space>
               )}
             </div>
           </Dropdown>
@@ -199,7 +213,15 @@ export default function DbTree() {
                       }}
                     >
                       <TableOutlined style={{ color: t.info }} />
-                      <Text style={{ color: t.text.listItem, fontSize: 13 }}>{col.name}</Text>
+                      <Text style={{ color: t.text.listItem, fontSize: 13, flex: 1 }}>{col.name}</Text>
+                      {selectedCollection === col.name && selectedDb === db.name && (
+                        <Button type="text" size="small" icon={<CloseOutlined style={{ fontSize: 11 }} />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            closeCollection();
+                          }}
+                          style={{ color: t.text.subtle, height: 20, width: 20 }} title="关闭集合" />
+                      )}
                     </div>
                   </Dropdown>
                 ))
