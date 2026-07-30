@@ -14,6 +14,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
+      sandbox: false,
       preload: path.join(__dirname, 'preload.js'),
     },
   });
@@ -21,10 +22,19 @@ function createWindow() {
   // 去掉菜单栏
   Menu.setApplicationMenu(null);
 
-  if (process.env.NODE_ENV !== 'production') {
+  // 捕获渲染进程错误
+  mainWindow.webContents.on('console-message', (event, level, message) => {
+    console.log(`[renderer] ${message}`);
+  });
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error(`[main] Failed to load: ${errorDescription} (${errorCode})`);
+  });
+
+  if (!app.isPackaged) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
 
   mainWindow.on('closed', () => {
