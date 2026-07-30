@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Modal, Button, Select, AutoComplete, Space, Typography, message, Tag, Progress, Divider, Radio, Spin } from 'antd';
 import { SwapOutlined, DatabaseOutlined, TableOutlined, LinkOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 
 const { Text, Title } = Typography;
 
@@ -15,6 +16,7 @@ export default function SyncModal() {
     syncResult, setSyncResult,
     connections, activeConnectionId,
   } = useStore();
+  const t = useTheme();
 
   const [syncScope, setSyncScope] = useState('collection'); // 'collection' | 'database'
 
@@ -296,7 +298,7 @@ export default function SyncModal() {
 
   return (
     <Modal
-      title={<span><SwapOutlined style={{ color: '#00b96b', marginRight: 8 }} />同步数据</span>}
+      title={<span><SwapOutlined style={{ color: t.accent, marginRight: 8 }} />同步数据</span>}
       open={syncOpen}
       onCancel={() => { if (!syncing) { setSyncOpen(false); setSyncResult(null); } }}
       width={600}
@@ -309,7 +311,7 @@ export default function SyncModal() {
           {[1, 2, 3, 4].map(s => (
             <div key={s} style={{
               width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: step >= s ? '#00b96b' : '#333', color: '#fff', fontSize: 12, fontWeight: 'bold',
+              background: step >= s ? t.accent : t.border, color: '#fff', fontSize: 12, fontWeight: 'bold',
             }}>
               {s}
             </div>
@@ -340,15 +342,15 @@ export default function SyncModal() {
         <div>
           {syncResult.success ? (
             <div>
-              <Text style={{ color: '#00b96b', fontSize: 16, display: 'block', textAlign: 'center', marginBottom: 16 }}>
+              <Text style={{ color: t.accent, fontSize: 16, display: 'block', textAlign: 'center', marginBottom: 16 }}>
                 ✅ 同步完成
               </Text>
               <div style={{ textAlign: 'center', marginBottom: 12 }}>
                 <Text type="secondary">{formatSummary(syncResult.summary)}</Text>
               </div>
               {syncResult.summary.structure && (
-                <div style={{ background: '#1a1a1a', padding: 12, borderRadius: 6, marginBottom: 8 }}>
-                  <Text strong style={{ color: '#aaa' }}>结构同步</Text>
+                <div style={{ background: t.bg.panel, padding: 12, borderRadius: 6, marginBottom: 8 }}>
+                  <Text strong style={{ color: t.text.secondary }}>结构同步</Text>
                   <div style={{ marginTop: 4 }}>
                     {syncResult.summary.structure.collections && (
                       <Tag color="cyan">同步 {syncResult.summary.structure.collections} 个集合</Tag>
@@ -360,8 +362,8 @@ export default function SyncModal() {
                 </div>
               )}
               {syncResult.summary.data && (
-                <div style={{ background: '#1a1a1a', padding: 12, borderRadius: 6 }}>
-                  <Text strong style={{ color: '#aaa' }}>数据同步</Text>
+                <div style={{ background: t.bg.panel, padding: 12, borderRadius: 6 }}>
+                  <Text strong style={{ color: t.text.secondary }}>数据同步</Text>
                   <div style={{ marginTop: 4 }}>
                     {syncResult.summary.data.collections && (
                       <Tag color="cyan">同步 {syncResult.summary.data.collections} 个集合</Tag>
@@ -378,10 +380,10 @@ export default function SyncModal() {
             </div>
           ) : (
             <div>
-              <Text style={{ color: '#ff4d4f', fontSize: 16, display: 'block', textAlign: 'center', marginBottom: 16 }}>
+              <Text style={{ color: t.error, fontSize: 16, display: 'block', textAlign: 'center', marginBottom: 16 }}>
                 ❌ 同步失败
               </Text>
-              <div style={{ background: '#2a1a1a', padding: 12, borderRadius: 6 }}>
+              <div style={{ background: t.bg.errorBg, padding: 12, borderRadius: 6 }}>
                 <Text type="danger">{syncResult.error}</Text>
               </div>
             </div>
@@ -395,12 +397,12 @@ export default function SyncModal() {
         <div style={{ textAlign: 'center', padding: 20 }}>
           <Spin size="large" />
           <div style={{ marginTop: 16 }}>
-            <Text style={{ color: '#00b96b' }}>{syncProgress?.status || '同步中...'}</Text>
+            <Text style={{ color: t.accent }}>{syncProgress?.status || '同步中...'}</Text>
           </div>
           {syncProgress?.total > 0 && (
             <Progress
               percent={Math.round((syncProgress.current / syncProgress.total) * 100)}
-              strokeColor="#00b96b"
+              strokeColor={t.accent}
               style={{ marginTop: 12 }}
             />
           )}
@@ -411,7 +413,7 @@ export default function SyncModal() {
           {/* Step 1: 选择源 */}
           {step === 1 && (
             <div>
-              <Text strong style={{ color: '#00b96b', display: 'block', marginBottom: 12 }}>
+              <Text strong style={{ color: t.accent, display: 'block', marginBottom: 12 }}>
                 步骤 1：选择源{syncScope === 'database' ? '数据库' : '数据'}
               </Text>
               <Space direction="vertical" style={{ width: '100%' }}>
@@ -467,7 +469,7 @@ export default function SyncModal() {
           {/* Step 2: 选择目标 */}
           {step === 2 && (
             <div>
-              <Text strong style={{ color: '#00b96b', display: 'block', marginBottom: 12 }}>
+              <Text strong style={{ color: t.accent, display: 'block', marginBottom: 12 }}>
                 步骤 2：选择目标位置
               </Text>
               <Space direction="vertical" style={{ width: '100%' }}>
@@ -524,7 +526,7 @@ export default function SyncModal() {
 
               {isSameTarget() && (
                 <div style={{
-                  background: '#fff3e0', border: '1px solid #ffcc80', borderRadius: 4,
+                  background: t.bg.warning, border: '1px solid #ffcc80', borderRadius: 4,
                   padding: '8px 12px', marginTop: 12, fontSize: 12,
                 }}>
                   ⚠️ 源和目标相同，建议创建新的目标数据库或选择不同的集合
@@ -536,7 +538,7 @@ export default function SyncModal() {
           {/* Step 3: 同步选项 */}
           {step === 3 && (
             <div>
-              <Text strong style={{ color: '#00b96b', display: 'block', marginBottom: 12 }}>
+              <Text strong style={{ color: t.accent, display: 'block', marginBottom: 12 }}>
                 步骤 3：同步选项
               </Text>
               <div style={{ marginBottom: 16 }}>
@@ -571,15 +573,15 @@ export default function SyncModal() {
 
               {/* 同步库模式下显示清空选项 */}
               {syncScope === 'database' && (
-                <div style={{ marginTop: 16, padding: '12px', background: '#1a1a1a', borderRadius: 6 }}>
+                <div style={{ marginTop: 16, padding: '12px', background: t.bg.panel, borderRadius: 6 }}>
                   <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input
                       type="checkbox"
                       checked={clearTarget}
                       onChange={(e) => setClearTarget(e.target.checked)}
-                      style={{ accentColor: '#00b96b' }}
+                      style={{ accentColor: t.accent }}
                     />
-                    <Text style={{ color: '#ff9800' }}>同步前清空目标库（删除所有已有集合）</Text>
+                    <Text style={{ color: t.warningAlt }}>同步前清空目标库（删除所有已有集合）</Text>
                   </label>
                   {clearTarget && (
                     <Text type="danger" style={{ fontSize: 11, display: 'block', marginTop: 4, marginLeft: 24 }}>
@@ -594,31 +596,31 @@ export default function SyncModal() {
           {/* Step 4: 确认 */}
           {step === 4 && (
             <div>
-              <Text strong style={{ color: '#00b96b', display: 'block', marginBottom: 12 }}>
+              <Text strong style={{ color: t.accent, display: 'block', marginBottom: 12 }}>
                 步骤 4：确认同步
               </Text>
-              <div style={{ background: '#1a1a1a', padding: 16, borderRadius: 6 }}>
+              <div style={{ background: t.bg.panel, padding: 16, borderRadius: 6 }}>
                 <div style={{ marginBottom: 8 }}>
                   <Text type="secondary">同步范围：</Text>
-                  <Text style={{ color: '#ddd' }}>
+                  <Text style={{ color: t.text.primary }}>
                     {syncScope === 'database' ? '同步整个数据库' : '同步单个集合'}
                   </Text>
                 </div>
                 <div style={{ marginBottom: 8 }}>
                   <Text type="secondary">源：</Text>
-                  <Text style={{ color: '#ddd' }}>
+                  <Text style={{ color: t.text.primary }}>
                     {syncSource?.connId && connections.find(c => c.id === syncSource.connId)?.name} / {syncSource?.db}
                     {syncSource?.collection && ` / ${syncSource.collection}`}
                   </Text>
                 </div>
                 <div style={{ marginBottom: 8 }}>
                   <Text type="secondary">目标：</Text>
-                  <Text style={{ color: '#ddd' }}>
+                  <Text style={{ color: t.text.primary }}>
                     {syncTarget?.connId && connections.find(c => c.id === syncTarget.connId)?.name} / {syncTarget?.db}
                     {syncTarget?.collection && ` / ${syncTarget.collection}`}
                   </Text>
                 </div>
-                <Divider style={{ borderColor: '#333', margin: '8px 0' }} />
+                <Divider style={{ borderColor: t.border, margin: '8px 0' }} />
                 {syncScope === 'database' && clearTarget && (
                   <div style={{ marginBottom: 8 }}>
                     <Text type="danger">⚠️ 将清空目标库中所有已有集合和数据</Text>
@@ -626,14 +628,14 @@ export default function SyncModal() {
                 )}
                 <div>
                   <Text type="secondary">同步类型：</Text>
-                  <Text style={{ color: '#ddd' }}>
+                  <Text style={{ color: t.text.primary }}>
                     {syncOptions.type === 'both' ? '结构 + 数据' : syncOptions.type === 'structure' ? '仅结构' : '仅数据'}
                   </Text>
                 </div>
                 {(syncOptions.type === 'data' || syncOptions.type === 'both') && (
                   <div>
                     <Text type="secondary">数据模式：</Text>
-                    <Text style={{ color: '#ddd' }}>
+                    <Text style={{ color: t.text.primary }}>
                       {syncOptions.dataMode === 'upsert' ? '覆盖（upsert）' : syncOptions.dataMode === 'append' ? '追加' : '替换'}
                     </Text>
                   </div>

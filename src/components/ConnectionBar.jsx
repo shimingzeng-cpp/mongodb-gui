@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Button, Space, Tag, message, Select, Typography, Input } from 'antd';
-import { LinkOutlined, DisconnectOutlined, ReloadOutlined, SettingOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined } from '@ant-design/icons';
+import { LinkOutlined, DisconnectOutlined, ReloadOutlined, SettingOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined, SunOutlined, MoonOutlined, DatabaseOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 
 const { Text } = Typography;
 
@@ -11,8 +12,9 @@ export default function ConnectionBar() {
     setConnected, setUri, setActiveConnectionId, setConnectionLoading,
     setDatabases, setSelectedDb, setSelectedCollection,
     setDocuments, setPage, setSettingsOpen, doRefresh, setHelpOpen, setSyncOpen,
-    addConnection,
+    addConnection, theme: appTheme, toggleTheme,
   } = useStore();
+  const t = useTheme();
 
   const [inputUri, setInputUri] = useState('mongodb://localhost:27017');
   const activeConn = connections.find(c => c.id === activeConnectionId);
@@ -113,64 +115,30 @@ export default function ConnectionBar() {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: '#141414', borderBottom: '1px solid #333' }}>
-      <Space>
-        {!connected ? (
-          <>
-            <Input
-              value={inputUri}
-              onChange={e => setInputUri(e.target.value)}
-              placeholder="mongodb://localhost:27017"
-              style={{ width: 320 }}
-              size="small"
-              onPressEnter={handleQuickConnect}
-            />
-            <Button
-              type="primary"
-              icon={<LinkOutlined />}
-              loading={connectionLoading}
-              onClick={handleQuickConnect}
-              size="small"
-            >
-              连接
-            </Button>
-            <Text type="secondary" style={{ fontSize: 11 }}>或</Text>
-            <Select
-              value={activeConnectionId || undefined}
-              onChange={(id) => setActiveConnectionId(id)}
-              placeholder="选择已保存的连接..."
-              style={{ width: 180 }}
-              size="small"
-              options={connections.map(c => ({
-                label: `${c.name} (${c.host}:${c.port})`,
-                value: c.id,
-              }))}
-              allowClear
-              onClear={() => setActiveConnectionId(null)}
-            />
-            <Button
-              type="primary"
-              icon={<LinkOutlined />}
-              loading={connectionLoading}
-              onClick={handleConnect}
-              size="small"
-              disabled={!activeConnectionId}
-            >
-              连接
-            </Button>
-          </>
-        ) : (
-          <Space>
-            <Tag color="green" style={{ marginRight: 0 }}>已连接 {activeConn?.name}</Tag>
-            <Button icon={<ReloadOutlined />} onClick={handleRefresh} size="small">刷新</Button>
-            <Button icon={<SwapOutlined />} onClick={() => setSyncOpen(true)} size="small">同步</Button>
-            <Button danger icon={<DisconnectOutlined />} onClick={handleDisconnect} size="small">断开</Button>
-          </Space>
-        )}
-      </Space>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: t.bg.primary, borderBottom: `1px solid ${t.border}` }}>
+      {connected ? (
+        <Space>
+          <Tag color="green" style={{ marginRight: 0 }}>已连接 {activeConn?.name}</Tag>
+          <Button icon={<ReloadOutlined />} onClick={handleRefresh} size="small">刷新</Button>
+          <Button icon={<SwapOutlined />} onClick={() => setSyncOpen(true)} size="small">同步</Button>
+          <Button danger icon={<DisconnectOutlined />} onClick={handleDisconnect} size="small">断开</Button>
+        </Space>
+      ) : (
+        <Space>
+          <DatabaseOutlined style={{ color: t.accent, fontSize: 16 }} />
+          <Text strong style={{ color: t.text.primary, fontSize: 14 }}>MongoDB 可视化工具</Text>
+        </Space>
+      )}
       <Space size="small">
-        <Button type="text" icon={<QuestionCircleOutlined />} onClick={() => setHelpOpen(true)} title="帮助" />
-        <Button type="text" icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)} title="设置" />
+        <Button
+          type="text"
+          icon={appTheme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+          onClick={toggleTheme}
+          title={appTheme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
+          style={{ color: t.text.secondary }}
+        />
+        <Button type="text" icon={<QuestionCircleOutlined />} onClick={() => setHelpOpen(true)} title="帮助" style={{ color: t.text.secondary }} />
+        <Button type="text" icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)} title="设置" style={{ color: t.text.secondary }} />
       </Space>
     </div>
   );

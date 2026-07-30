@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, Typography, Divider, Tag } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -54,10 +55,11 @@ const tips = [
 
 export default function HelpModal() {
   const { helpOpen, setHelpOpen } = useStore();
+  const t = useTheme();
 
   return (
     <Modal
-      title={<span><QuestionCircleOutlined style={{ color: '#00b96b', marginRight: 8 }} />使用帮助</span>}
+      title={<span><QuestionCircleOutlined style={{ color: t.accent, marginRight: 8 }} />使用帮助</span>}
       open={helpOpen}
       onCancel={() => setHelpOpen(false)}
       footer={null}
@@ -66,10 +68,10 @@ export default function HelpModal() {
       <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
         {tips.map((tip, i) => (
           <div key={i} style={{ marginBottom: 16 }}>
-            <Text strong style={{ fontSize: 14, color: '#00b96b' }}>
+            <Text strong style={{ fontSize: 14, color: t.accent }}>
               {i + 1}. {tip.title}
             </Text>
-            <Paragraph style={{ margin: '4px 0 0', color: '#aaa', fontSize: 13 }}>
+            <Paragraph style={{ margin: '4px 0 0', color: t.text.secondary, fontSize: 13 }}>
               {tip.content}
             </Paragraph>
             {tip.tags && (
@@ -79,7 +81,7 @@ export default function HelpModal() {
             )}
           </div>
         ))}
-        <Divider style={{ margin: '12px 0', borderColor: '#333' }} />
+        <Divider style={{ margin: '12px 0', borderColor: t.border }} />
         <Text type="secondary" style={{ fontSize: 12 }}>
           国产开源MongoDB可视化工具 v1.0 | 右键操作更便捷
         </Text>

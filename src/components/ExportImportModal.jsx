@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Select, Space, Typography, message, Tag } from 'antd';
 import { ExportOutlined, ImportOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 
 const { Text, Title } = Typography;
 
 export default function ExportImportModal() {
   const { selectedDb, selectedCollection, exportOpen, setExportOpen, triggerReload, activeConnectionId } = useStore();
+  const t = useTheme();
   const [tab, setTab] = useState('export');
   const [format, setFormat] = useState('json');
   const [loading, setLoading] = useState(false);
@@ -119,7 +121,7 @@ export default function ExportImportModal() {
 
   return (
     <Modal
-      title={<span><DownloadOutlined style={{ color: '#00b96b', marginRight: 8 }} />导出/导入数据</span>}
+      title={<span><DownloadOutlined style={{ color: t.accent, marginRight: 8 }} />导出/导入数据</span>}
       open={exportOpen}
       onCancel={() => { setExportOpen(false); setPreview(null); }}
       width={600}
@@ -152,7 +154,7 @@ export default function ExportImportModal() {
             <div>
               <Text type="secondary" style={{ fontSize: 12 }}>预览：</Text>
               <pre style={{
-                background: '#0d0d0d', color: '#00b96b', padding: 8, borderRadius: 4,
+                background: t.bg.code, color: t.accent, padding: 8, borderRadius: 4,
                 maxHeight: 200, overflow: 'auto', fontSize: 12, marginTop: 4,
                 whiteSpace: 'pre-wrap', wordBreak: 'break-all',
               }}>
@@ -188,8 +190,8 @@ export default function ExportImportModal() {
           </div>
           {importMode === 'overwrite' && (
             <div style={{
-              background: '#fff3e0', border: '1px solid #ffcc80', borderRadius: 4,
               padding: '6px 10px', marginBottom: 12, fontSize: 12,
+              color: t.warning,
             }}>
               ⚠️ 覆盖模式会先<strong>清空集合中所有数据</strong>，再导入文件内容，该操作不可撤销！
             </div>

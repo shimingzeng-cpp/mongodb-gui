@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, Select, message, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 
 const { Text } = Typography;
 
@@ -46,6 +47,7 @@ function parseValue(val, type) {
 
 export default function DocEditor() {
   const { editingDoc, editingMode, setEditingDoc, selectedDb, selectedCollection, page, pageSize, setDocuments, documents, activeConnectionId } = useStore();
+  const t = useTheme();
   const [fields, setFields] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -120,8 +122,8 @@ export default function DocEditor() {
       ]}>
       <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
         {editingMode === 'edit' && editingDoc?._id && (
-          <div style={{ marginBottom: 12, padding: '4px 8px', background: '#1f1f1f', borderRadius: 4 }}>
-            <Text type="secondary">_id: </Text><Text code style={{ color: '#00b96b' }}>{editingDoc._id}</Text>
+          <div style={{ marginBottom: 12, padding: '4px 8px', background: t.bg.sidebar, borderRadius: 4 }}>
+            <Text type="secondary">_id: </Text><Text code style={{ color: t.accent }}>{editingDoc._id}</Text>
           </div>
         )}
         {fields.map((field, index) => (

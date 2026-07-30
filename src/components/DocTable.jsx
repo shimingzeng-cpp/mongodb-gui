@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Input, Select, Tag, Popconfirm, message, Tooltip, Typography } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CopyOutlined, CloseOutlined, CodeOutlined, SafetyCertificateOutlined, ThunderboltOutlined, DownloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CopyOutlined, CloseOutlined, CodeOutlined, SafetyCertificateOutlined, ThunderboltOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 
 const { Text } = Typography;
 
@@ -49,15 +50,17 @@ export default function DocTable() {
   const {
     selectedDb, selectedCollection,
     documents, totalDocs, page, pageSize,
-    setPage, setDocuments, filter, setFilter, setEditingDoc, setSchemaOpen, setIndexOpen, setExportOpen, reloadKey,
+    setPage, setPageSize, setDocuments, filter, setFilter, setEditingDoc, setSchemaOpen, setIndexOpen, setExportOpen, reloadKey,
     activeConnectionId,
   } = useStore();
+  const t = useTheme();
 
   const [loading, setLoading] = useState(false);
   const [columns, setColumns] = useState([]);
   const [conditions, setConditions] = useState([{ field: '', operator: 'eq', value: '' }]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [advancedJson, setAdvancedJson] = useState('');
+  const [showFilter, setShowFilter] = useState(false);
 
   const loadData = async (p = page, filterObj = {}) => {
     if (!selectedDb || !selectedCollection) return;
@@ -103,7 +106,7 @@ export default function DocTable() {
       const str = JSON.stringify(val);
       return (
         <Tooltip title={<pre style={{ maxHeight: 300, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(val, null, 2)}</pre>}>
-          <Text style={{ color: '#4fc3f7', cursor: 'pointer' }} ellipsis copyable>
+          <Text style={{ color: t.info, cursor: 'pointer' }} ellipsis copyable>
             {str.length > 40 ? str.slice(0, 40) + '...' : str}
           </Text>
         </Tooltip>
@@ -171,76 +174,86 @@ export default function DocTable() {
   const fieldNames = columns.map(c => c.dataIndex);
 
   if (!selectedDb || !selectedCollection) {
-    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>请选择左侧的数据库和集合</div>;
+    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: t.text.muted }}>请选择左侧的数据库和集合</div>;
   }
 
   return (
     <div>
       {/* 筛选工具栏 */}
-      <div style={{ marginBottom: 12 }}>
-        {!showAdvanced ? (
-          <div>
-            {conditions.map((c, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                <Select
-                  value={c.field || undefined}
-                  onChange={v => updateCondition(i, 'field', v)}
-                  placeholder="选择字段"
-                  style={{ width: 140 }}
-                  size="small"
-                  options={fieldNames.map(f => ({ label: f, value: f }))}
-                  showSearch
-                />
-                <Select
-                  value={c.operator}
-                  onChange={v => updateCondition(i, 'operator', v)}
-                  style={{ width: 90 }}
-                  size="small"
-                  options={OPERATORS}
-                />
-                {!['exists', 'notExists'].includes(c.operator) && (
-                  <Input
-                    value={c.value}
-                    onChange={e => updateCondition(i, 'value', e.target.value)}
-                    placeholder="值"
-                    style={{ width: 160 }}
+      {showFilter && (
+        <div style={{ marginBottom: 12 }}>
+          {!showAdvanced ? (
+            <div>
+              {conditions.map((c, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                  <Select
+                    value={c.field || undefined}
+                    onChange={v => updateCondition(i, 'field', v)}
+                    placeholder="选择字段"
+                    style={{ width: 140 }}
                     size="small"
-                    onPressEnter={handleSearch}
+                    options={fieldNames.map(f => ({ label: f, value: f }))}
+                    showSearch
                   />
-                )}
-                <Button type="text" size="small" danger icon={<CloseOutlined />} onClick={() => removeCondition(i)} />
-                {i === conditions.length - 1 && (
-                  <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addCondition}>条件</Button>
-                )}
-              </div>
-            ))}
-            <Space style={{ marginTop: 4 }}>
+                  <Select
+                    value={c.operator}
+                    onChange={v => updateCondition(i, 'operator', v)}
+                    style={{ width: 90 }}
+                    size="small"
+                    options={OPERATORS}
+                  />
+                  {!['exists', 'notExists'].includes(c.operator) && (
+                    <Input
+                      value={c.value}
+                      onChange={e => updateCondition(i, 'value', e.target.value)}
+                      placeholder="值"
+                      style={{ width: 160 }}
+                      size="small"
+                      onPressEnter={handleSearch}
+                    />
+                  )}
+                  <Button type="text" size="small" danger icon={<CloseOutlined />} onClick={() => removeCondition(i)} />
+                  {i === conditions.length - 1 && (
+                    <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addCondition}>条件</Button>
+                  )}
+                </div>
+              ))}
+              <Space style={{ marginTop: 4 }}>
+                <Button onClick={handleSearch} type="primary" size="small" icon={<SearchOutlined />}>查询</Button>
+                <Button onClick={handleReset} size="small" icon={<ReloadOutlined />}>重置</Button>
+                <Button onClick={() => setShowAdvanced(true)} size="small" icon={<CodeOutlined />}>高级</Button>
+              </Space>
+            </div>
+          ) : (
+            <Space>
+              <Input
+                placeholder='JSON 查询, 如 {"id": 1}'
+                value={advancedJson}
+                onChange={e => setAdvancedJson(e.target.value)}
+                style={{ width: 300 }}
+                size="small"
+                onPressEnter={handleSearch}
+              />
               <Button onClick={handleSearch} type="primary" size="small" icon={<SearchOutlined />}>查询</Button>
               <Button onClick={handleReset} size="small" icon={<ReloadOutlined />}>重置</Button>
-              <Button onClick={() => setShowAdvanced(true)} size="small" icon={<CodeOutlined />}>高级</Button>
+              <Button onClick={() => setShowAdvanced(false)} size="small">简易</Button>
             </Space>
-          </div>
-        ) : (
-          <Space>
-            <Input
-              placeholder='JSON 查询, 如 {"id": 1}'
-              value={advancedJson}
-              onChange={e => setAdvancedJson(e.target.value)}
-              style={{ width: 300 }}
-              size="small"
-              onPressEnter={handleSearch}
-            />
-            <Button onClick={handleSearch} type="primary" size="small" icon={<SearchOutlined />}>查询</Button>
-            <Button onClick={handleReset} size="small" icon={<ReloadOutlined />}>重置</Button>
-            <Button onClick={() => setShowAdvanced(false)} size="small">简易</Button>
-          </Space>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* 顶部信息栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
         <Text type="secondary">共 {totalDocs} 条，第 {page} 页</Text>
         <Space size="small">
+          <Button
+            type={showFilter ? 'primary' : 'default'}
+            size="small"
+            icon={<FilterOutlined />}
+            onClick={() => setShowFilter(!showFilter)}
+          >
+            筛选
+          </Button>
           <Button onClick={() => setEditingDoc({}, 'create')} type="primary" size="small" icon={<PlusOutlined />}>新建文档</Button>
           <Button onClick={() => setSchemaOpen(true)} size="small" icon={<SafetyCertificateOutlined />}>字段</Button>
           <Button onClick={() => setIndexOpen(true)} size="small" icon={<ThunderboltOutlined />}>索引</Button>
@@ -262,12 +275,21 @@ export default function DocTable() {
             </Space>
           ),
         }]}
-        dataSource={documents} rowKey="_id" loading={loading} size="small"
-        scroll={{ x: 'max-content' }}
+        dataSource={documents} rowKey="_id" loading={loading} size="small" virtual
+        scroll={{ y: 500, x: 'max-content' }}
         pagination={{
-          current: page, pageSize, total: totalDocs, showSizeChanger: false,
+          current: page, pageSize, total: totalDocs, showSizeChanger: true,
+          pageSizeOptions: ['50', '100', '500', '5000', '10000', '20000'],
           showTotal: (t) => `共 ${t} 条`,
-          onChange: (p) => { setPage(p); loadData(p, buildFilter(conditions)); },
+          onChange: (p, ps) => {
+            if (ps !== pageSize) {
+              setPageSize(ps);
+              loadData(1, buildFilter(conditions));
+            } else {
+              setPage(p);
+              loadData(p, buildFilter(conditions));
+            }
+          },
         }}
       />
     </div>

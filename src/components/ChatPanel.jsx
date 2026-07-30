@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Input, Button, Space, Typography, message, Spin, Tag } from 'antd';
 import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 const { chatCompletion, buildSystemPrompt } = window.__ai;
 
 const { Text } = Typography;
 
 export default function ChatPanel() {
   const { selectedDb, documents, aiConfig, activeConnectionId } = useStore();
+  const t = useTheme();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -137,7 +139,7 @@ export default function ChatPanel() {
         <div style={{ marginTop: 4 }}>
           <Tag color="success">✅ 返回 {data.length} 条</Tag>
           <pre style={{
-            background: '#0d0d0d', color: '#00b96b', padding: 8, borderRadius: 4,
+            background: t.bg.code, color: t.accent, padding: 8, borderRadius: 4,
             maxHeight: 200, overflow: 'auto', fontSize: 12, margin: '4px 0 0',
             whiteSpace: 'pre-wrap', wordBreak: 'break-all',
           }}>
@@ -150,7 +152,7 @@ export default function ChatPanel() {
       <div style={{ marginTop: 4 }}>
         <Tag color="success">✅ 执行成功</Tag>
         <pre style={{
-          background: '#0d0d0d', color: '#00b96b', padding: 8, borderRadius: 4,
+          background: t.bg.code, color: t.accent, padding: 8, borderRadius: 4,
           maxHeight: 200, overflow: 'auto', fontSize: 12, margin: '4px 0 0',
           whiteSpace: 'pre-wrap', wordBreak: 'break-all',
         }}>
@@ -165,7 +167,7 @@ export default function ChatPanel() {
       {/* 消息列表 */}
       <div style={{ flex: 1, overflow: 'auto', overflowX: 'hidden', padding: '8px 12px' }}>
         {messages.length === 0 && (
-          <div style={{ textAlign: 'center', color: '#666', padding: 40, fontSize: 13 }}>
+          <div style={{ textAlign: 'center', color: t.text.muted, padding: 40, fontSize: 13 }}>
             <RobotOutlined style={{ fontSize: 32, marginBottom: 12 }} />
             <div>AI 助手已就绪</div>
             <div style={{ marginTop: 8, fontSize: 12 }}>
@@ -182,29 +184,29 @@ export default function ChatPanel() {
             {msg.role === 'user' && (
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <div style={{
-                  background: '#1a3a2a', padding: '8px 12px', borderRadius: 12,
+                  background: t.bg.highlight, padding: '8px 12px', borderRadius: 12,
                   maxWidth: '80%', borderBottomRightRadius: 4,
                 }}>
-                  <Text style={{ color: '#ddd', fontSize: 13, whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
+                  <Text style={{ color: t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
                 </div>
-                <UserOutlined style={{ color: '#00b96b', marginTop: 4 }} />
+                <UserOutlined style={{ color: t.accent, marginTop: 4 }} />
               </div>
             )}
 
             {/* AI 消息 */}
             {msg.role === 'assistant' && (
               <div style={{ display: 'flex', gap: 8 }}>
-                <RobotOutlined style={{ color: '#4fc3f7', marginTop: 4 }} />
+                <RobotOutlined style={{ color: t.info, marginTop: 4 }} />
                 <div style={{
-                  background: '#1a2740', padding: '8px 12px', borderRadius: 12,
+                  background: t.bg.highlightBlue, padding: '8px 12px', borderRadius: 12,
                   maxWidth: '80%', borderBottomLeftRadius: 4,
                 }}>
-                  <Text style={{ color: msg.isError ? '#ff4d4f' : '#ddd', fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                  <Text style={{ color: msg.isError ? t.error : t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>
                     {msg.content}
                   </Text>
                   {msg.command && (
-                    <div style={{ marginTop: 6, padding: '4px 8px', background: '#0d0d0d', borderRadius: 4 }}>
-                      <Text code style={{ color: '#00b96b', fontSize: 12 }}>{msg.command}</Text>
+                    <div style={{ marginTop: 6, padding: '4px 8px', background: t.bg.code, borderRadius: 4 }}>
+                      <Text code style={{ color: t.accent, fontSize: 12 }}>{msg.command}</Text>
                     </div>
                   )}
                   {msg.executed && renderExecResult(msg.execResult)}
@@ -226,7 +228,7 @@ export default function ChatPanel() {
         ))}
         {loading && (
           <div style={{ display: 'flex', gap: 8 }}>
-            <RobotOutlined style={{ color: '#4fc3f7', marginTop: 4 }} />
+            <RobotOutlined style={{ color: t.info, marginTop: 4 }} />
             <Spin size="small" />
           </div>
         )}
@@ -234,7 +236,7 @@ export default function ChatPanel() {
       </div>
 
       {/* 输入栏 */}
-      <div style={{ borderTop: '1px solid #333', padding: '8px 12px', display: 'flex', gap: 8, flexShrink: 0 }}>
+      <div style={{ borderTop: `1px solid ${t.border}`, padding: '8px 12px', display: 'flex', gap: 8, flexShrink: 0 }}>
         <Button type="text" size="small" icon={<ClearOutlined />} onClick={clearChat} title="清空对话" />
         <Input.TextArea
           value={input}
@@ -243,7 +245,7 @@ export default function ChatPanel() {
           placeholder="用自然语言描述你想做什么..."
           rows={2}
           style={{
-            background: '#0d0d0d', color: '#ddd', border: '1px solid #333',
+            background: t.bg.code, color: t.text.primary, border: `1px solid ${t.border}`,
             fontSize: 13, borderRadius: 8, resize: 'none',
           }}
           spellCheck={false}

@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Button, message, Spin, Typography, Modal, Input, Dropdown, Space } from 'antd';
 import { DatabaseOutlined, TableOutlined, PlusOutlined, RightOutlined, DownOutlined, DeleteOutlined, MoreOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 
 const { Text } = Typography;
 
 export default function DbTree() {
   const { databases, selectedDb, selectedCollection, setSelectedDb, setSelectedCollection, connected, setPage, setDocuments, refreshKey, setDatabases, activeConnectionId } = useStore();
+  const t = useTheme();
   const [expandedDbs, setExpandedDbs] = useState({});
   const [collections, setCollections] = useState({});
   const [loading, setLoading] = useState({});
+  const [hoveredDb, setHoveredDb] = useState(null);
+  const [hoveredCol, setHoveredCol] = useState(null);
   const [createModal, setCreateModal] = useState({ open: false, dbName: null, isNewDb: false });
   const [newName, setNewName] = useState('');
   const [newDbName, setNewDbName] = useState('');
@@ -72,11 +76,11 @@ export default function DbTree() {
       <div
         style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
       >
-        <Text strong style={{ color: '#aaa', fontSize: 12 }}>数据库</Text>
+        <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>数据库</Text>
         <Space size={4}>
           <Button type="text" size="small" icon={<PlusOutlined />}
             onClick={() => setCreateModal({ open: true, dbName: null, isNewDb: true })}
-            style={{ color: '#00b96b' }} title="新建数据库" />
+            style={{ color: t.accent }} title="新建数据库" />
           {selectedDb && (
             <Button type="text" size="small" icon={<PlusOutlined />}
               onClick={() => setCreateModal({ open: true, dbName: selectedDb, isNewDb: false })} />
@@ -121,18 +125,18 @@ export default function DbTree() {
           >
             <div
               onClick={() => toggleDb(db.name)}
+              onMouseEnter={() => setHoveredDb(db.name)}
+              onMouseLeave={() => setHoveredDb(null)}
               style={{
                 cursor: 'pointer', padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 8,
-                background: selectedDb === db.name && !selectedCollection ? '#1a3a2a' : 'transparent',
-                borderLeft: selectedDb === db.name && !selectedCollection ? '3px solid #00b96b' : '3px solid transparent',
+                background: selectedDb === db.name && !selectedCollection ? t.bg.highlight : (hoveredDb === db.name ? t.bg.hover : 'transparent'),
+                borderLeft: selectedDb === db.name && !selectedCollection ? `3px solid ${t.accent}` : '3px solid transparent',
                 transition: 'all 0.2s',
               }}
-              onMouseEnter={e => { if (selectedDb !== db.name || selectedCollection) e.currentTarget.style.background = '#2a2a2a'; }}
-              onMouseLeave={e => { if (selectedDb !== db.name || selectedCollection) e.currentTarget.style.background = 'transparent'; }}
             >
-              {expandedDbs[db.name] ? <DownOutlined style={{ fontSize: 10, color: '#888' }} /> : <RightOutlined style={{ fontSize: 10, color: '#888' }} />}
-              <DatabaseOutlined style={{ color: '#00b96b' }} />
-              <Text style={{ color: '#ddd', fontSize: 13 }}>{db.name}</Text>
+              {expandedDbs[db.name] ? <DownOutlined style={{ fontSize: 10, color: t.text.subtle }} /> : <RightOutlined style={{ fontSize: 10, color: t.text.subtle }} />}
+              <DatabaseOutlined style={{ color: t.accent }} />
+              <Text style={{ color: t.text.primary, fontSize: 13 }}>{db.name}</Text>
             </div>
           </Dropdown>
 
@@ -145,6 +149,8 @@ export default function DbTree() {
                   <div
                     key={col.name}
                     onClick={(e) => { e.stopPropagation(); selectCollection(db.name, col.name); }}
+                    onMouseEnter={() => setHoveredCol(col.name + db.name)}
+                    onMouseLeave={() => setHoveredCol(null)}
                     onContextMenu={(e) => {
                       e.preventDefault(); e.stopPropagation();
                       Modal.confirm({
@@ -165,15 +171,13 @@ export default function DbTree() {
                     }}
                     style={{
                       cursor: 'pointer', padding: '5px 16px', display: 'flex', alignItems: 'center', gap: 8,
-                      background: selectedCollection === col.name && selectedDb === db.name ? '#1a3a2a' : 'transparent',
-                      borderLeft: selectedCollection === col.name && selectedDb === db.name ? '3px solid #4fc3f7' : '3px solid transparent',
+                      background: selectedCollection === col.name && selectedDb === db.name ? t.bg.highlight : (hoveredCol === col.name + db.name ? t.bg.hover : 'transparent'),
+                      borderLeft: selectedCollection === col.name && selectedDb === db.name ? `3px solid ${t.info}` : '3px solid transparent',
                       transition: 'all 0.2s',
                     }}
-                    onMouseEnter={e => { if (selectedCollection !== col.name) e.currentTarget.style.background = '#2a2a2a'; }}
-                    onMouseLeave={e => { if (selectedCollection !== col.name) e.currentTarget.style.background = 'transparent'; }}
                   >
-                    <TableOutlined style={{ color: '#4fc3f7' }} />
-                    <Text style={{ color: '#ccc', fontSize: 13 }}>{col.name}</Text>
+                    <TableOutlined style={{ color: t.info }} />
+                    <Text style={{ color: t.text.listItem, fontSize: 13 }}>{col.name}</Text>
                   </div>
                 ))
               )}
@@ -187,7 +191,7 @@ export default function DbTree() {
         okText="创建" cancelText="取消">
         {createModal.isNewDb ? (
           <div>
-            <p style={{ color: '#aaa', marginBottom: 8 }}>MongoDB 中创建数据库需要同时创建一个集合</p>
+            <p style={{ color: t.text.secondary, marginBottom: 8 }}>MongoDB 中创建数据库需要同时创建一个集合</p>
             <Input placeholder="数据库名称" value={newDbName} onChange={e => setNewDbName(e.target.value)}
               style={{ marginBottom: 8 }} />
             <Input placeholder="集合名称（表名）" value={newName} onChange={e => setNewName(e.target.value)}
@@ -195,7 +199,7 @@ export default function DbTree() {
           </div>
         ) : (
           <div>
-            <p style={{ color: '#aaa', marginBottom: 8 }}>在数据库 <Text code>{createModal.dbName}</Text> 中创建</p>
+            <p style={{ color: t.text.secondary, marginBottom: 8 }}>在数据库 <Text code>{createModal.dbName}</Text> 中创建</p>
             <Input placeholder="集合名称（表名）" value={newName}
               onChange={e => setNewName(e.target.value)} onPressEnter={handleCreate} />
           </div>

@@ -1,5 +1,13 @@
 import { create } from 'zustand';
 
+// 从 localStorage 加载主题配置
+const loadTheme = () => {
+  try {
+    const saved = localStorage.getItem('theme');
+    return saved === 'light' || saved === 'dark' ? saved : 'dark';
+  } catch { return 'dark'; }
+};
+
 // 从 localStorage 加载 AI 配置
 const loadAiConfig = () => {
   try {
@@ -106,6 +114,7 @@ const useStore = create((set) => ({
   pageSize: 50,
   setDocuments: (docs, total) => set({ documents: docs, totalDocs: total }),
   setPage: (val) => set({ page: val }),
+  setPageSize: (val) => set({ pageSize: val, page: 1 }),
 
   // ========== 查询条件 ==========
   filter: '',
@@ -130,6 +139,14 @@ const useStore = create((set) => ({
     localStorage.setItem('aiConfig', JSON.stringify(config));
     set({ aiConfig: config });
   },
+
+  // ========== 主题 ==========
+  theme: loadTheme(),
+  toggleTheme: () => set((state) => {
+    const next = state.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', next);
+    return { theme: next };
+  }),
 
   // ========== 弹窗开关 ==========
   settingsOpen: false,

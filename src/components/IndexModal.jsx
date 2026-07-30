@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Table, Button, Input, Select, Space, Typography, message, Tag, Popconfirm, Checkbox, Divider } from 'antd';
 import { PlusOutlined, DeleteOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 
 const { Text } = Typography;
 
 export default function IndexModal() {
   const { selectedDb, selectedCollection, indexOpen, setIndexOpen, documents, activeConnectionId } = useStore();
+  const t = useTheme();
   const [indexes, setIndexes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -92,7 +94,7 @@ export default function IndexModal() {
 
   return (
     <Modal
-      title={<span><ThunderboltOutlined style={{ color: '#00b96b', marginRight: 8 }} />索引管理 - {selectedCollection}</span>}
+      title={<span><ThunderboltOutlined style={{ color: t.accent, marginRight: 8 }} />索引管理 - {selectedCollection}</span>}
       open={indexOpen}
       onCancel={() => { setIndexOpen(false); setShowCreate(false); }}
       width={800}
@@ -106,8 +108,8 @@ export default function IndexModal() {
       </Space>
 
       {showCreate && (
-        <div style={{ padding: 12, background: '#1a1a1a', borderRadius: 6, marginBottom: 12 }}>
-          <Text strong style={{ color: '#aaa' }}>新建索引</Text>
+        <div style={{ padding: 12, background: t.bg.panel, borderRadius: 6, marginBottom: 12 }}>
+          <Text strong style={{ color: t.text.secondary }}>新建索引</Text>
           <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
             <Select
               value={newField || undefined}

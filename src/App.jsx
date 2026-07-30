@@ -15,6 +15,7 @@ import IndexModal from './components/IndexModal';
 import ExportImportModal from './components/ExportImportModal';
 import SyncModal from './components/SyncModal';
 import useStore from './store';
+import { useTheme } from './theme';
 
 const { Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -22,6 +23,7 @@ const { Text, Title } = Typography;
 function WelcomeScreen() {
   const { connections, setConnectionLoading, setConnected, setUri, setActiveConnectionId, setDatabases, setSelectedDb, setSelectedCollection, setDocuments, setPage } = useStore();
   const [connecting, setConnecting] = useState(null);
+  const t = useTheme();
 
   const handleQuickConnect = async (conn) => {
     setConnecting(conn.id);
@@ -49,7 +51,7 @@ function WelcomeScreen() {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       flex: 1, padding: 40,
     }}>
-      <Title level={3} style={{ color: '#aaa', marginBottom: 8 }}>欢迎使用 MongoDB 可视化工具</Title>
+      <Title level={3} style={{ color: t.text.secondary, marginBottom: 8 }}>欢迎使用 MongoDB 可视化工具</Title>
       <Text type="secondary" style={{ marginBottom: 32 }}>
         请选择左侧的连接或添加新连接开始使用
       </Text>
@@ -60,15 +62,15 @@ function WelcomeScreen() {
               key={conn.id}
               hoverable
               size="small"
-              style={{ width: 200, background: '#1f1f1f', border: '1px solid #333' }}
+              style={{ width: 200, background: t.bg.card, border: `1px solid ${t.border}` }}
               onClick={() => handleQuickConnect(conn)}
             >
               <div style={{ textAlign: 'center' }}>
                 <div style={{
-                  width: 12, height: 12, borderRadius: '50%', background: '#555',
+                  width: 12, height: 12, borderRadius: '50%', background: t.muted,
                   margin: '0 auto 8px',
                 }} />
-                <Text style={{ color: '#ddd', display: 'block' }}>{conn.name}</Text>
+                <Text style={{ color: t.text.primary, display: 'block' }}>{conn.name}</Text>
                 <Text type="secondary" style={{ fontSize: 11 }}>{conn.host}:{conn.port}</Text>
               </div>
             </Card>
@@ -81,6 +83,8 @@ function WelcomeScreen() {
 
 export default function App() {
   const connected = useStore((s) => s.connected);
+  const appTheme = useStore((s) => s.theme);
+  const t = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [shellHeight, setShellHeight] = useState(250);
   const [dragging, setDragging] = useState(false);
@@ -111,7 +115,7 @@ export default function App() {
     <ConfigProvider
       locale={zhCN}
       theme={{
-        algorithm: theme.darkAlgorithm,
+        algorithm: appTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: '#00b96b',
           borderRadius: 6,
@@ -132,8 +136,8 @@ export default function App() {
               collapsed={collapsed}
               onCollapse={setCollapsed}
               style={{
-                background: '#1f1f1f',
-                borderRight: '1px solid #333',
+                background: t.bg.sidebar,
+                borderRight: `1px solid ${t.border}`,
                 overflow: 'auto',
                 overflowX: 'hidden',
               }}
@@ -159,11 +163,11 @@ export default function App() {
                   <div
                     onMouseDown={handleMouseDown}
                     style={{
-                      height: 4, cursor: 'row-resize', background: dragging ? '#00b96b' : '#333',
+                      height: 4, cursor: 'row-resize', background: dragging ? t.accent : t.border,
                       flexShrink: 0, transition: dragging ? 'none' : 'background 0.2s',
                     }}
-                    onMouseEnter={e => { if (!dragging) e.target.style.background = '#00b96b'; }}
-                    onMouseLeave={e => { if (!dragging) e.target.style.background = '#333'; }}
+                    onMouseEnter={e => { if (!dragging) e.target.style.background = t.accent; }}
+                    onMouseLeave={e => { if (!dragging) e.target.style.background = t.border; }}
                   />
                   <div style={{ height: shellHeight, flexShrink: 0, overflow: 'hidden', overflowX: 'hidden' }}>
                     <ShellPanel />

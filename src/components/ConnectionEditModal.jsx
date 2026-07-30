@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Select, Checkbox, Button, Space, message, Typography } from 'antd';
 import { LinkOutlined } from '@ant-design/icons';
+import { useTheme } from '../theme';
 
 const { Text } = Typography;
 
 export default function ConnectionEditModal({ open, connection, onSave, onCancel }) {
+  const t = useTheme();
   const [form] = Form.useForm();
   const [testing, setTesting] = useState(false);
 
@@ -87,7 +89,7 @@ export default function ConnectionEditModal({ open, connection, onSave, onCancel
 
   return (
     <Modal
-      title={<span><LinkOutlined style={{ color: '#00b96b', marginRight: 8 }} />{isEdit ? '编辑连接' : '新建连接'}</span>}
+      title={<span><LinkOutlined style={{ color: t.accent, marginRight: 8 }} />{isEdit ? '编辑连接' : '新建连接'}</span>}
       open={open}
       onCancel={onCancel}
       width={520}
@@ -127,7 +129,7 @@ export default function ConnectionEditModal({ open, connection, onSave, onCancel
           </Form.Item>
         </Space>
 
-        <Text strong style={{ color: '#aaa', fontSize: 12, display: 'block', marginBottom: 8 }}>认证（可选）</Text>
+        <Text strong style={{ color: t.text.secondary, fontSize: 12, display: 'block', marginBottom: 8 }}>认证（可选）</Text>
         <Space style={{ width: '100%' }} align="start">
           <Form.Item name="username" label="用户名" style={{ flex: 1 }}>
             <Input placeholder="用户名" />
@@ -155,7 +157,7 @@ export default function ConnectionEditModal({ open, connection, onSave, onCancel
           </Form.Item>
         </Space>
 
-        <Text strong style={{ color: '#aaa', fontSize: 12, display: 'block', marginBottom: 4 }}>高级选项</Text>
+        <Text strong style={{ color: t.text.secondary, fontSize: 12, display: 'block', marginBottom: 4 }}>高级选项</Text>
         <Form.Item name="replicaSet" label="副本集名称">
           <Input placeholder="留空则不使用副本集" />
         </Form.Item>

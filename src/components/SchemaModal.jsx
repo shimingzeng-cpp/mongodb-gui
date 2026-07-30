@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, Select, Space, Typography, message, Tag, Popconfirm } from 'antd';
 import { PlusOutlined, DeleteOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 
 const { Text, Title } = Typography;
 
@@ -9,6 +10,7 @@ const BSON_TYPES = ['string', 'int', 'double', 'bool', 'object', 'array', 'date'
 
 export default function SchemaModal() {
   const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, documents, activeConnectionId } = useStore();
+  const t = useTheme();
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -104,7 +106,7 @@ export default function SchemaModal() {
 
   return (
     <Modal
-      title={<span><SafetyCertificateOutlined style={{ color: '#00b96b', marginRight: 8 }} />字段验证 - {selectedCollection}</span>}
+      title={<span><SafetyCertificateOutlined style={{ color: t.accent, marginRight: 8 }} />字段验证 - {selectedCollection}</span>}
       open={schemaOpen}
       onCancel={() => setSchemaOpen(false)}
       width={700}
@@ -121,7 +123,7 @@ export default function SchemaModal() {
         <div>
           {/* Required 字段 */}
           <div style={{ marginBottom: 16 }}>
-            <Text strong style={{ color: '#aaa', fontSize: 12 }}>必填字段 (required)</Text>
+            <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>必填字段 (required)</Text>
             {requiredFields.map((f, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <Select
@@ -142,7 +144,7 @@ export default function SchemaModal() {
 
           {/* 字段属性 */}
           <div>
-            <Text strong style={{ color: '#aaa', fontSize: 12 }}>字段定义</Text>
+            <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>字段定义</Text>
             {properties.map((p, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
                 <Select
@@ -169,7 +171,7 @@ export default function SchemaModal() {
             value={jsonText}
             onChange={e => setJsonText(e.target.value)}
             rows={15}
-            style={{ background: '#0d0d0d', color: '#00b96b', fontFamily: 'Consolas, Monaco, monospace', fontSize: 13, marginTop: 8 }}
+            style={{ background: t.bg.code, color: t.accent, fontFamily: 'Consolas, Monaco, monospace', fontSize: 13, marginTop: 8 }}
             placeholder='{"$jsonSchema": {"bsonType": "object", "required": ["id"], "properties": {"id": {"bsonType": "int"}}}}'
           />
         </div>

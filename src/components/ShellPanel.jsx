@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Input, Button, Space, Typography, message, Spin, Tabs } from 'antd';
 import { PlayCircleOutlined, ClearOutlined, RobotOutlined, CodeOutlined } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 import ChatPanel from './ChatPanel';
 
 const { TextArea } = Input;
@@ -36,6 +37,7 @@ const SHELL_SUGGESTIONS = [
 
 function ShellTab() {
   const { selectedDb, selectedCollection, setSelectedCollection, setPage, activeConnectionId } = useStore();
+  const t = useTheme();
   const [command, setCommand] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -135,9 +137,9 @@ function ShellTab() {
     const data = res.data;
     if (data === undefined || data === null) return <Text type="success">✅ 执行成功</Text>;
     if (typeof data === 'object') {
-      return <pre style={{ background: '#1a1a1a', color: '#00b96b', padding: 12, borderRadius: 6, maxHeight: 300, overflow: 'auto', fontSize: 13, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{JSON.stringify(data, null, 2)}</pre>;
+      return <pre style={{ background: t.bg.panel, color: t.accent, padding: 12, borderRadius: 6, maxHeight: 300, overflow: 'auto', fontSize: 13, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{JSON.stringify(data, null, 2)}</pre>;
     }
-    return <Text style={{ color: '#00b96b' }}>{String(data)}</Text>;
+    return <Text style={{ color: t.accent }}>{String(data)}</Text>;
   };
 
   return (
@@ -145,13 +147,13 @@ function ShellTab() {
       <div style={{ padding: '0 8px 8px', flexShrink: 0, overflow: 'visible' }}>
         <div style={{ marginBottom: 4, fontSize: 12 }}>
           <Text type="secondary">当前库：</Text>
-          <Text code style={{ color: selectedDb ? '#00b96b' : '#ff4d4f' }}>
+          <Text code style={{ color: selectedDb ? t.accent : t.error }}>
             {selectedDb || '未选择'}
           </Text>
           {selectedCollection && (
             <span>
               <Text type="secondary"> / </Text>
-              <Text code style={{ color: '#4fc3f7' }}>{selectedCollection}</Text>
+              <Text code style={{ color: t.info }}>{selectedCollection}</Text>
             </span>
           )}
         </div>
@@ -159,15 +161,15 @@ function ShellTab() {
         <TextArea ref={textareaRef} value={command} onChange={handleChange} onKeyDown={handleKeyDown}
           placeholder="db.t_player.find()"
           rows={4}
-          style={{ background: '#0d0d0d', color: '#00b96b', border: '1px solid #333', fontFamily: 'Consolas, Monaco, monospace', fontSize: 13, borderRadius: 6, resize: 'vertical' }}
+          style={{ background: t.bg.code, color: t.accent, border: `1px solid ${t.border}`, fontFamily: 'Consolas, Monaco, monospace', fontSize: 13, borderRadius: 6, resize: 'vertical' }}
           spellCheck={false} />
         {suggestions.length > 0 && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, marginTop: 2, background: '#141414', border: '1px solid #00b96b', borderRadius: 6, maxHeight: 180, overflow: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, marginTop: 2, background: t.bg.primary, border: `1px solid ${t.accent}`, borderRadius: 6, maxHeight: 180, overflow: 'auto', boxShadow: t.shadow }}>
             {suggestions.map((s, i) => (
               <div key={i} onClick={() => applySuggestion(s)}
-                style={{ padding: '6px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', background: i === selectedSugg ? '#1a3a2a' : 'transparent', fontSize: 13, fontFamily: 'Consolas, Monaco, monospace' }}
+                style={{ padding: '6px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', background: i === selectedSugg ? t.bg.highlight : 'transparent', fontSize: 13, fontFamily: 'Consolas, Monaco, monospace' }}
                 onMouseEnter={() => setSelectedSugg(i)}>
-                <Text style={{ color: '#00b96b' }}>{s.value}</Text>
+                <Text style={{ color: t.accent }}>{s.value}</Text>
                 <Text type="secondary" style={{ fontSize: 11 }}>{s.desc}</Text>
               </div>
             ))}
@@ -191,14 +193,15 @@ function ShellTab() {
 
 export default function ShellPanel() {
   const [activeTab, setActiveTab] = useState('shell');
+  const t = useTheme();
   const tabItems = [
     { key: 'shell', label: <Space size={4}><CodeOutlined />Shell</Space>, children: <ShellTab /> },
     { key: 'ai', label: <Space size={4}><RobotOutlined />AI 助手</Space>, children: <ChatPanel /> },
   ];
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', borderTop: '1px solid #333', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', borderTop: `1px solid ${t.border}`, overflow: 'hidden' }}>
       <Tabs className="shell-tabs" activeKey={activeTab} onChange={setActiveTab} items={tabItems} size="small"
-        tabBarStyle={{ marginBottom: 0, padding: '0 12px', background: '#1a1a1a', flexShrink: 0 }}
+        tabBarStyle={{ marginBottom: 0, padding: '0 12px', background: t.bg.panel, flexShrink: 0 }}
         style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} />
     </div>
   );

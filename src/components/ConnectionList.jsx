@@ -6,6 +6,7 @@ import {
   EditOutlined, CopyOutlined, DeleteOutlined, LoadingOutlined,
 } from '@ant-design/icons';
 import useStore from '../store';
+import { useTheme } from '../theme';
 import ConnectionEditModal from './ConnectionEditModal';
 
 const { Text } = Typography;
@@ -18,6 +19,8 @@ export default function ConnectionList() {
     setConnected, setUri, setDatabases, setSelectedDb, setSelectedCollection,
     setDocuments, setPage, doRefresh, setExportOpen, setSyncOpen,
   } = useStore();
+  const t = useTheme();
+  const [hoveredId, setHoveredId] = useState(null);
 
   const [editModal, setEditModal] = useState({ open: false, connection: null });
   const [expanded, setExpanded] = useState(true);
@@ -68,9 +71,9 @@ export default function ConnectionList() {
   };
 
   const getStatusColor = (conn) => {
-    if (activeConnectionId === conn.id && connected) return '#00b96b';
-    if (activeConnectionId === conn.id && !connected) return '#ff4d4f';
-    return '#555';
+    if (activeConnectionId === conn.id && connected) return t.accent;
+    if (activeConnectionId === conn.id && !connected) return t.error;
+    return t.muted;
   };
 
   const getStatusLabel = (conn) => {
@@ -110,23 +113,23 @@ export default function ConnectionList() {
   };
 
   return (
-    <div style={{ borderBottom: '1px solid #333', paddingBottom: 4 }}>
+    <div style={{ borderBottom: `1px solid ${t.border}`, paddingBottom: 4 }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '8px 12px 4px', cursor: 'pointer',
       }}
         onClick={() => setExpanded(!expanded)}
       >
-        <Text strong style={{ color: '#aaa', fontSize: 12 }}>
+        <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>
           连接管理
         </Text>
         <Space size={4}>
           <Button
             type="text" size="small" icon={<PlusOutlined style={{ fontSize: 12 }} />}
             onClick={(e) => { e.stopPropagation(); setEditModal({ open: true, connection: null }); }}
-            style={{ color: '#00b96b' }}
+            style={{ color: t.accent }}
           />
-          {expanded ? <DownOutlined style={{ fontSize: 10, color: '#888' }} /> : <RightOutlined style={{ fontSize: 10, color: '#888' }} />}
+          {expanded ? <DownOutlined style={{ fontSize: 10, color: t.text.subtle }} /> : <RightOutlined style={{ fontSize: 10, color: t.text.subtle }} />}
         </Space>
       </div>
 
@@ -137,7 +140,7 @@ export default function ConnectionList() {
               <Text type="secondary" style={{ fontSize: 11 }}>暂无保存的连接</Text>
               <br />
               <Button
-                type="link" size="small" style={{ fontSize: 11, color: '#00b96b' }}
+                type="link" size="small" style={{ fontSize: 11, color: t.accent }}
                 onClick={() => setEditModal({ open: true, connection: null })}
               >
                 添加连接
@@ -154,17 +157,13 @@ export default function ConnectionList() {
                       handleConnect(conn);
                     }
                   }}
+                  onMouseEnter={() => setHoveredId(conn.id)}
+                  onMouseLeave={() => setHoveredId(null)}
                   style={{
                     cursor: 'pointer', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
-                    background: activeConnectionId === conn.id ? '#1a3a2a' : 'transparent',
-                    borderLeft: activeConnectionId === conn.id ? '3px solid #00b96b' : '3px solid transparent',
+                    background: activeConnectionId === conn.id ? t.bg.highlight : (hoveredId === conn.id ? t.bg.hover : 'transparent'),
+                    borderLeft: activeConnectionId === conn.id ? `3px solid ${t.accent}` : '3px solid transparent',
                     transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={e => {
-                    if (activeConnectionId !== conn.id) e.currentTarget.style.background = '#2a2a2a';
-                  }}
-                  onMouseLeave={e => {
-                    if (activeConnectionId !== conn.id) e.currentTarget.style.background = 'transparent';
                   }}
                 >
                   <span style={{
@@ -172,7 +171,7 @@ export default function ConnectionList() {
                     background: getStatusColor(conn), flexShrink: 0,
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ color: '#ddd', fontSize: 12, display: 'block', lineHeight: 1.3 }} ellipsis>
+                    <Text style={{ color: t.text.primary, fontSize: 12, display: 'block', lineHeight: 1.3 }} ellipsis>
                       {conn.name}
                     </Text>
                     <Text type="secondary" style={{ fontSize: 10, display: 'block', lineHeight: 1.2 }}>
@@ -180,7 +179,7 @@ export default function ConnectionList() {
                     </Text>
                   </div>
                   {activeConnectionId === conn.id && connectionLoading ? (
-                    <LoadingOutlined style={{ color: '#00b96b', fontSize: 12 }} />
+                    <LoadingOutlined style={{ color: t.accent, fontSize: 12 }} />
                   ) : activeConnectionId === conn.id && connected ? (
                     <Tag color="green" style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0 }}>已连</Tag>
                   ) : null}
