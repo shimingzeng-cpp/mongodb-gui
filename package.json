@@ -14,11 +14,6 @@
     "directories": {
       "output": "release"
     },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
     "win": {
       "target": "nsis",
       "icon": null
