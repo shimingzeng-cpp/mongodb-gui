@@ -8,7 +8,7 @@ const { chatCompletion, buildSystemPrompt } = window.__ai;
 const { Text } = Typography;
 
 export default function ChatPanel() {
-  const { selectedDb, documents, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb } = useStore();
+  const { selectedDb, documents, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb, setDatabases, doRefresh, triggerReload } = useStore();
   const t = useTheme();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -115,6 +115,28 @@ export default function ChatPanel() {
         const results = [...(m.execResults || []), result];
         return { ...m, execResults: results, executed: true };
       }));
+
+      // 执行成功后刷新 UI
+      if (result.success) {
+        const lower = command.toLowerCase();
+        const isMutation =
+          lower.includes('drop') || lower.includes('insert') ||
+          lower.includes('update') || lower.includes('delete') ||
+          lower.includes('createcollection') || lower.includes('rename') ||
+          lower.includes('createindex') || lower.includes('dropindex');
+        if (isMutation) {
+          // 刷新数据库列表
+          if (lower.includes('database') || lower.includes('drop(') || lower.includes('drop())') || lower.includes('createcollection')) {
+            try {
+              const dbs = await window.__mongo.listDatabases(activeConnectionId);
+              setDatabases(dbs);
+            } catch {}
+          }
+          // 刷新集合缓存和文档
+          doRefresh();
+          triggerReload();
+        }
+      }
     } catch (err) {
       setMessages(prev => prev.map(m => {
         if (m.time !== msgObj.time) return m;
