@@ -6,7 +6,31 @@ import { useTheme } from '../theme';
 
 const { Text, Title } = Typography;
 
-const BSON_TYPES = ['string', 'int', 'double', 'bool', 'object', 'array', 'date', 'objectId', 'null'];
+const BSON_TYPES = [
+  { label: 'Array', value: 'array' },
+  { label: 'Binary', value: 'binary' },
+  { label: 'Boolean', value: 'bool' },
+  { label: 'Code', value: 'code' },
+  { label: 'Date', value: 'date' },
+  { label: 'Decimal128', value: 'decimal' },
+  { label: 'Double', value: 'double' },
+  { label: 'Int32', value: 'int32' },
+  { label: 'Int64', value: 'int64' },
+  { label: 'MaxKey', value: 'maxKey' },
+  { label: 'MinKey', value: 'minKey' },
+  { label: 'Null', value: 'null' },
+  { label: 'Object', value: 'object' },
+  { label: 'ObjectId', value: 'objectId' },
+  { label: 'BSONRegExp', value: 'regex' },
+  { label: 'String', value: 'string' },
+  { label: 'BSONSymbol', value: 'symbol' },
+  { label: 'Timestamp', value: 'timestamp' },
+  { label: 'Undefined', value: 'undefined' },
+  { label: 'UUID', value: 'uuid' },
+  { label: 'LegacyJavaUUID', value: 'uuidLegacyJava' },
+  { label: 'LegacyCSharpUUID', value: 'uuidLegacyCSharp' },
+  { label: 'LegacyPythonUUID', value: 'uuidLegacyPython' },
+];
 
 export default function SchemaModal() {
   const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId } = useStore();
@@ -145,7 +169,7 @@ export default function SchemaModal() {
                   size="small"
                   style={{ width: 160 }}
                 />
-                <Select value={p.type} onChange={v => updateProperty(i, 'type', v)} size="small" style={{ width: 100 }} options={BSON_TYPES.map(t => ({ label: t, value: t }))} />
+                <Select value={p.type} onChange={v => updateProperty(i, 'type', v)} size="small" style={{ width: 100 }} options={BSON_TYPES} />
                 <Button icon={<DeleteOutlined />} size="small" danger type="text" onClick={() => removeProperty(i)} />
               </div>
             ))}
