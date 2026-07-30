@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Space, Tag, message, Select, Typography, Input } from 'antd';
-import { LinkOutlined, DisconnectOutlined, ReloadOutlined, SettingOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined, SunOutlined, MoonOutlined, DatabaseOutlined, RobotOutlined } from '@ant-design/icons';
+import { LinkOutlined, DisconnectOutlined, SettingOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined, SunOutlined, MoonOutlined, DatabaseOutlined, RobotOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
@@ -102,24 +102,11 @@ export default function ConnectionBar() {
     }
   };
 
-  const handleRefresh = async () => {
-    if (!activeConnectionId) return;
-    try {
-      const dbs = await window.__mongo.listDatabases(activeConnectionId);
-      setDatabases(dbs);
-      doRefresh();
-      message.success('已刷新');
-    } catch (err) {
-      message.error('刷新失败: ' + err.message);
-    }
-  };
-
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: t.bg.primary, borderBottom: `1px solid ${t.border}` }}>
       {connected ? (
         <Space>
           <Tag color="green" style={{ marginRight: 0 }}>已连接 {activeConn?.name}</Tag>
-          <Button icon={<ReloadOutlined />} onClick={handleRefresh} size="small">刷新</Button>
           <Button icon={<SwapOutlined />} onClick={() => setSyncOpen(true)} size="small">同步</Button>
           <Button danger icon={<DisconnectOutlined />} onClick={handleDisconnect} size="small">断开</Button>
         </Space>

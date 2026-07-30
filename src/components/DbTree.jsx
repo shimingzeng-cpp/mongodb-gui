@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button, message, Spin, Typography, Modal, Input, Dropdown } from 'antd';
-import { DatabaseOutlined, TableOutlined, PlusOutlined, RightOutlined, DownOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Button, message, Spin, Typography, Modal, Input, Dropdown, Space } from 'antd';
+import { DatabaseOutlined, TableOutlined, PlusOutlined, RightOutlined, DownOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
@@ -17,6 +17,15 @@ export default function DbTree() {
   const [createModal, setCreateModal] = useState({ open: false, dbName: null, isNewDb: false });
   const [newName, setNewName] = useState('');
   const [newDbName, setNewDbName] = useState('');
+
+  const handleRefresh = async () => {
+    try {
+      const dbs = await window.__mongo.listDatabases(activeConnectionId);
+      setDatabases(dbs);
+      setCollections({});
+      message.success('已刷新');
+    } catch (err) { message.error('刷新失败: ' + err.message); }
+  };
 
   // 刷新时清除缓存的集合列表
   useEffect(() => {
@@ -78,9 +87,13 @@ export default function DbTree() {
         style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
       >
         <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>数据库</Text>
-        <Button type="text" size="small" icon={<PlusOutlined />}
-          onClick={() => setCreateModal({ open: true, dbName: null, isNewDb: true })}
-          style={{ color: t.accent }} title="新建数据库（可选同时创建集合）" />
+        <Space size={2}>
+          <Button type="text" size="small" icon={<ReloadOutlined style={{ fontSize: 12 }} />}
+            onClick={handleRefresh} title="刷新数据库列表" style={{ color: t.accent }} />
+          <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 12 }} />}
+            onClick={() => setCreateModal({ open: true, dbName: null, isNewDb: true })}
+            style={{ color: t.accent }} title="新建数据库（可选同时创建集合）" />
+        </Space>
       </div>
 
       {databases.map(db => (
