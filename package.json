@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build && electron-builder",
+    "release": "vite build && electron-builder --win --x64 --config.electronDist=node_modules/electron/dist",
     "start": "electron ."
   },
   "build": {

@@ -55,9 +55,21 @@ npm run build
 
 #### 打包后文件位置
 
-- Windows：`dist/` 目录下生成 `*.exe` 安装包
-- macOS：`dist/` 目录下生成 `*.dmg` 安装包
-- Linux：`dist/` 目录下生成 `*.AppImage`
+- Windows：`release/` 目录下生成 `MongoDB GUI Setup *.exe` 安装包
+
+#### 发布新版本
+
+```bash
+# 1. 更新版本号
+# 修改 package.json 中的 version 字段
+
+# 2. 打包
+npm run release
+
+# 3. 创建 GitHub Release
+# 手动在 https://github.com/shimingzeng-cpp/mongodb-gui/releases 创建新版本
+# 上传 release/ 目录下的 exe 文件
+```
 
 ## 配置 AI 助手
 
