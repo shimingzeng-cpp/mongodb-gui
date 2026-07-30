@@ -16,6 +16,9 @@ if %errorlevel% equ 0 (
 ) else (
     echo   [FAIL] 未安装 Node.js
     echo         请访问 https://nodejs.org/ 下载安装 (建议 v18+)
+    echo.
+    pause
+    exit /b 1
 )
 
 :: 检查 npm
@@ -27,9 +30,12 @@ if %errorlevel% equ 0 (
     echo   [OK] npm v%NPM_VER%
 ) else (
     echo   [FAIL] 未安装 npm
+    echo.
+    pause
+    exit /b 1
 )
 
-:: 检查 MongoDB (仅检测是否存在，不执行 mongod 避免DLL错误)
+:: 检查 MongoDB
 echo.
 echo [3/3] 检查 MongoDB ...
 where mongod >nul 2>&1
@@ -37,27 +43,30 @@ if %errorlevel% equ 0 (
     echo   [OK] 已安装 MongoDB
 ) else (
     echo   [WARN] 未检测到本地 MongoDB
-    echo         你可以：
-    echo         1. 安装 MongoDB: https://www.mongodb.com/try/download/community
-    echo         2. 或连接远程 MongoDB 地址（如云数据库）
+    echo         你可以连接远程数据库使用
 )
 
 echo.
 echo ========================================
 echo.
+echo [OK] 环境就绪！
+echo.
+echo 选择启动方式：
+echo   1. 启动项目（npm install + npm run dev）
+echo   2. 仅退出
+echo.
+set /p CHOICE=请输入 1 或 2:
 
-:: 检查是否全部通过
-set ALL_OK=1
-where node >nul 2>&1 || set ALL_OK=0
-where npm >nul 2>&1 || set ALL_OK=0
-
-if %ALL_OK% equ 1 (
-    echo [OK] 环境就绪，可以启动项目：
+if "%CHOICE%"=="1" (
     echo.
-    echo   npm install
-    echo   npm run dev
+    echo 正在安装依赖并启动项目...
+    start "MongoDB GUI" cmd /k "cd /d %~dp0 && npm install && npm run dev"
+    echo.
+    echo 已在新窗口中启动，请等待项目加载完成。
+    timeout /t 3 >nul
 ) else (
-    echo [WARN] 请先安装缺失的依赖，然后重新运行此脚本。
+    echo.
+    echo 已退出。
 )
 
 echo.
