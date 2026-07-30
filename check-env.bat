@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 title MongoDB GUI - 环境检查
 
 echo ========================================
@@ -6,56 +7,58 @@ echo   MongoDB GUI - 环境检查
 echo ========================================
 echo.
 
-:: Node.js
-echo [1/3] Node.js ...
+:: 检查 Node.js
+echo [1/3] 检查 Node.js ...
 where node >nul 2>&1
 if %errorlevel% equ 0 (
     for /f "delims=" %%i in ('node -v') do set NODE_VER=%%i
     echo   [OK] Node.js %NODE_VER%
 ) else (
-    echo   [FAIL] Node.js not found
-    echo   Download: https://nodejs.org/ (v18+)
+    echo   [FAIL] 未安装 Node.js
+    echo         请访问 https://nodejs.org/ 下载安装 (建议 v18+)
 )
 
-:: npm
+:: 检查 npm
 echo.
-echo [2/3] npm ...
+echo [2/3] 检查 npm ...
 where npm >nul 2>&1
 if %errorlevel% equ 0 (
     for /f "delims=" %%i in ('npm -v') do set NPM_VER=%%i
     echo   [OK] npm v%NPM_VER%
 ) else (
-    echo   [FAIL] npm not found
+    echo   [FAIL] 未安装 npm
 )
 
-:: MongoDB
+:: 检查 MongoDB (仅检测是否存在，不执行 mongod 避免DLL错误)
 echo.
-echo [3/3] MongoDB ...
+echo [3/3] 检查 MongoDB ...
 where mongod >nul 2>&1
 if %errorlevel% equ 0 (
-    for /f "delims=" %%i in ('mongod --version 2^>nul ^| findstr /i "db version"') do set MONGO_VER=%%i
-    echo   [OK] MongoDB %MONGO_VER%
+    echo   [OK] 已安装 MongoDB
 ) else (
-    echo   [WARN] MongoDB not found
-    echo   You can connect to a remote MongoDB instead.
+    echo   [WARN] 未检测到本地 MongoDB
+    echo         你可以：
+    echo         1. 安装 MongoDB: https://www.mongodb.com/try/download/community
+    echo         2. 或连接远程 MongoDB 地址（如云数据库）
 )
 
 echo.
 echo ========================================
 echo.
 
+:: 检查是否全部通过
 set ALL_OK=1
 where node >nul 2>&1 || set ALL_OK=0
 where npm >nul 2>&1 || set ALL_OK=0
 
 if %ALL_OK% equ 1 (
-    echo [OK] Ready! Run:
+    echo [OK] 环境就绪，可以启动项目：
     echo.
     echo   npm install
     echo   npm run dev
 ) else (
-    echo [WARN] Please install missing dependencies first.
+    echo [WARN] 请先安装缺失的依赖，然后重新运行此脚本。
 )
 
 echo.
-pause
+pause
