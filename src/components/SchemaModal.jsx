@@ -138,13 +138,6 @@ export default function SchemaModal() {
       setRequiredFields(requiredFields.filter(f => f !== fieldName));
     }
   };
-  const addRequired = () => setRequiredFields([...requiredFields, '']);
-  const removeRequired = (i) => setRequiredFields(requiredFields.filter((_, idx) => idx !== i));
-  const updateRequired = (i, val) => {
-    const u = [...requiredFields];
-    u[i] = val;
-    setRequiredFields(u);
-  };
 
   return (
     <Modal
@@ -163,25 +156,6 @@ export default function SchemaModal() {
     >
       {!showJson ? (
         <div>
-          {/* Required 字段 */}
-          <div style={{ marginBottom: 16 }}>
-            <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>必填字段 (required)</Text>
-            <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>也可在下方字段定义中勾选"必填"</Text>
-            {requiredFields.map((f, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <Input
-                  value={f}
-                  onChange={e => updateRequired(i, e.target.value)}
-                  placeholder="输入字段名"
-                  size="small"
-                  style={{ width: 200 }}
-                />
-                <Button icon={<DeleteOutlined />} size="small" danger type="text" onClick={() => removeRequired(i)} />
-              </div>
-            ))}
-            <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addRequired} style={{ marginTop: 4 }}>添加必填字段</Button>
-          </div>
-
           {/* 字段属性 */}
           <div>
             <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>字段定义</Text>
