@@ -60,11 +60,15 @@ export default function SchemaModal() {
         const props = s.properties ? Object.entries(s.properties).map(([name, def]) => ({
           name, type: def.bsonType || 'string', ...def,
         })) : [];
+        // 确保 _id 始终在字段列表中
+        if (!props.find(p => p.name === '_id')) {
+          props.unshift({ name: '_id', type: 'objectId' });
+        }
         setProperties(props);
         setJsonText(JSON.stringify(result.validator, null, 2));
       } else {
         setRequiredFields([]);
-        setProperties([]);
+        setProperties([{ name: '_id', type: 'objectId' }]);
         setJsonText('');
       }
     } catch (err) { message.error('加载 Schema 失败: ' + err.message); }
