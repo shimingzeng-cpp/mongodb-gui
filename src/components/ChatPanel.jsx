@@ -65,9 +65,13 @@ export default function ChatPanel() {
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
 
-    // 启动 Agent 循环
-    await agentLoop([...messages, userMsg], text);
-
+    try {
+      await agentLoop(text);
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: 'assistant', content: '抱歉，执行出错: ' + err.message, time: Date.now(), isError: true,
+      }]);
+    }
     setLoading(false);
   };
 
@@ -76,7 +80,7 @@ export default function ChatPanel() {
   const [agentRound, setAgentRound] = useState(0);
   const MAX_ROUNDS = 10;
 
-  const agentLoop = async (currentMessages, userInput) => {
+  const agentLoop = async (userInput) => {
     setInterrupt(false);
     setAgentRound(0);
 
@@ -101,128 +105,128 @@ export default function ChatPanel() {
       selectedCollection, totalDocs, schemaFields, memorySummary: buildMemorySummary(),
     });
 
-    // 构建消息历史（system + 历史 + 当前用户输入）
-    const buildHistory = (extraContent) => [
-      { role: 'system', content: systemPrompt },
-      ...currentMessages.slice(-20).map(m => ({ role: m.role, content: m.content })),
-      ...(extraContent ? [{ role: 'user', content: extraContent }] : []),
-    ];
+    // 构建消息历史：system + 最近对话历史
+    const buildHistory = (extraContent) => {
+      const msgs = [];
+      // 获取当前最新的 messages 状态
+      const currentMsgs = useStore.getState().messages;
+      // 用 React 状态就不对了，直接用 messages 状态
+      return [
+        { role: 'system', content: systemPrompt },
+        ...(extraContent ? [{ role: 'user', content: extraContent }] : []),
+      ];
+    };
 
-    let lastReply = userInput;
     let round = 0;
+    let lastInput = userInput;  // 每次发给 AI 的内容
+
+    // 创建主消息
+    const mainMsg = {
+      role: 'assistant', content: '正在思考...',
+      commands: [], action: '', actionParams: {},
+      time: Date.now(), executed: false, execResults: [], round: 0, totalRounds: '?',
+      steps: [], // 子步骤
+    };
+    setMessages(prev => [...prev, mainMsg]);
 
     while (round < MAX_ROUNDS) {
       if (interrupt) {
-        setMessages(prev => [...prev, {
-          role: 'assistant', content: '⏸️ 已中断', time: Date.now(), isInterrupt: true,
-        }]);
+        setMessages(prev => prev.map(m =>
+          m.time === mainMsg.time ? { ...m, content: '⏸️ 已中断', totalRounds: `${round}/${MAX_ROUNDS}` } : m
+        ));
         return;
       }
 
       round++;
       setAgentRound(round);
 
+      // 调用 AI
+      const reply = await chatCompletion(
+        aiConfig.url, aiConfig.key, aiConfig.model,
+        buildHistory(lastInput)
+      );
+
+      let parsed;
       try {
-        const reply = await chatCompletion(
-          aiConfig.url, aiConfig.key, aiConfig.model, buildHistory(lastReply)
-        );
+        parsed = JSON.parse(reply);
+      } catch {
+        parsed = { reply, commands: [], action: '', done: true };
+      }
 
-        let parsed;
-        try {
-          parsed = JSON.parse(reply);
-        } catch {
-          parsed = { reply, commands: [], action: '' };
-        }
+      const commands = parsed.commands || (parsed.command ? [parsed.command] : []);
+      const actionParams = parsed.actionParams || {};
+      const done = parsed.done !== false;
 
-        const commands = parsed.commands || (parsed.command ? [parsed.command] : []);
-        const actionParams = parsed.actionParams || {};
-        const done = parsed.done !== false; // 默认 true（兼容旧格式）
+      // 处理 action
+      handleAction(parsed.action, actionParams);
 
-        if (round === 1) {
-          // 第一轮：创建 AI 消息并显示
-          const aiMsg = {
-            role: 'assistant',
-            content: parsed.reply || reply,
-            commands, action: parsed.action || '', actionParams,
-            time: Date.now(), executed: false, execResults: [], round, totalRounds: '?',
-          };
-
-          // 先处理 action
-          handleAction(parsed.action, actionParams);
-
-          // 执行命令
-          if (commands.length > 0) {
-            for (const cmd of commands) {
-              if (cmd.trim()) await executeCommand(cmd, aiMsg);
+      // 执行命令
+      const execResults = [];
+      for (const cmd of commands) {
+        if (cmd.trim()) {
+          const result = await window.__mongo.executeShell(activeConnectionId, selectedDb, cmd);
+          execResults.push(result);
+          // 刷新 UI
+          if (result.success) {
+            const lower = cmd.toLowerCase();
+            if (lower.includes('drop') || lower.includes('insert') || lower.includes('update') || lower.includes('delete') || lower.includes('createcollection') || lower.includes('rename') || lower.includes('createindex') || lower.includes('dropindex')) {
+              if (lower.includes('database') || lower.includes('drop(') || lower.includes('drop())') || lower.includes('createcollection')) {
+                try { const dbs = await window.__mongo.listDatabases(activeConnectionId); setDatabases(dbs); } catch {}
+              }
+              doRefresh();
+              triggerReload();
             }
           }
-
-          // 更新轮次标记
-          setMessages(prev => prev.map(m =>
-            m.time === aiMsg.time ? { ...m, totalRounds: done ? round : `>${round}` } : m
-          ));
-
-          if (done) return; // 一轮完成
-
-          // 构建后续输入：命令执行结果
-          const results = aiMsg.execResults || [];
-          const resultText = results.map((r, i) => {
-            const cmd = commands[i] || '';
-            if (r.success) return `[命令: ${cmd}] 执行结果: ${JSON.stringify(r.data)}`;
-            return `[命令: ${cmd}] 执行失败: ${r.error}`;
-          }).join('\n');
-
-          lastReply = `以上命令的执行结果：\n${resultText}\n\n请根据这些结果继续下一步。如果任务完成，请设 done: true 并总结。`;
-
-        } else {
-          // 后续轮次：追加到上一条消息，展示为子步骤
-          const stepMsg = {
-            role: 'assistant',
-            content: `**[第${round}步]** ${parsed.reply || reply}`,
-            commands, action: parsed.action || '', actionParams,
-            time: Date.now() + round, // 确保唯一 time
-            executed: false, execResults: [], round, totalRounds: done ? round : `>${round}`,
-            isSubStep: true,
-          };
-          setMessages(prev => [...prev, stepMsg]);
-
-          // 处理 action
-          handleAction(parsed.action, actionParams);
-
-          // 执行命令
-          if (commands.length > 0) {
-            for (const cmd of commands) {
-              if (cmd.trim()) await executeCommand(cmd, stepMsg);
-            }
-          }
-
-          // 更新轮次
-          setMessages(prev => prev.map(m =>
-            m.time === stepMsg.time ? { ...m, totalRounds: done ? round : `>${round}` } : m
-          ));
-
-          if (done) return;
-
-          const results = stepMsg.execResults || [];
-          const resultText = results.map((r, i) => {
-            const cmd = commands[i] || '';
-            if (r.success) return `[命令: ${cmd}] 执行结果: ${JSON.stringify(r.data)}`;
-            return `[命令: ${cmd}] 执行失败: ${r.error}`;
-          }).join('\n');
-
-          lastReply = `以上命令的执行结果：\n${resultText}\n\n请根据这些结果继续下一步。如果任务完成，请设 done: true 并总结。`;
         }
-      } catch (err) {
-        // 错误时继续尝试
-        lastReply = `执行出错: ${err.message}。请尝试其他方式继续，或设 done: true 结束。`;
+      }
+
+      // 构建步骤
+      const step = {
+        reply: parsed.reply || reply,
+        commands, action: parsed.action,
+        execResults, round, done,
+      };
+
+      if (done) {
+        // 最后一步：更新主消息
+        setMessages(prev => prev.map(m =>
+          m.time === mainMsg.time ? {
+            ...m, content: parsed.reply || reply,
+            commands, action: parsed.action, actionParams,
+            executed: true, execResults, round, totalRounds: `${round}/${round}`,
+            steps: [...(m.steps || []), step],
+          } : m
+        ));
+        return;
+      } else {
+        // 还没完成：更新主消息显示进度，并构建下一步输入
+        const resultText = execResults.map((r, i) => {
+          const cmd = commands[i] || '';
+          if (r.success) return `[命令: ${cmd}] 结果: ${JSON.stringify(r.data)}`;
+          return `[命令: ${cmd}] 失败: ${r.error}`;
+        }).join('\n');
+
+        lastInput = `[第${round}步结果]\n${resultText}\n\n继续下一步。如果任务完成，请设 done: true 并总结。`;
+
+        // 更新主消息显示进度
+        setMessages(prev => prev.map(m =>
+          m.time === mainMsg.time ? {
+            ...m, content: `正在执行第 ${round} 步：${(parsed.reply || reply).substring(0, 100)}...`,
+            commands, action: parsed.action, actionParams,
+            executed: true, execResults, round, totalRounds: `>${round}`,
+            steps: [...(m.steps || []), step],
+          } : m
+        ));
       }
     }
 
     // 达到最大轮次
-    setMessages(prev => [...prev, {
-      role: 'assistant', content: `⚠️ 已达到最大 ${MAX_ROUNDS} 轮限制，自动结束。如果需要继续，请再说一次。`,
-      time: Date.now(), isWarning: true,
-    }]);
+    setMessages(prev => prev.map(m =>
+      m.time === mainMsg.time ? {
+        ...m, content: `⚠️ 已达到最大 ${MAX_ROUNDS} 轮限制，自动结束。如果需要继续，请再说一次。`,
+        totalRounds: `${MAX_ROUNDS}/${MAX_ROUNDS}`,
+      } : m
+    ));
   };
 
   // 处理 action

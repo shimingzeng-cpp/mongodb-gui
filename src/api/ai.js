@@ -17,6 +17,7 @@ async function chatCompletion(apiUrl, apiKey, model, messages) {
       temperature: 0.3,
       max_tokens: 4096,
     }),
+    signal: AbortSignal.timeout(30000),
   });
 
   const contentType = res.headers.get('content-type') || '';
