@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Input, Select, message, Typography } from 'antd';
+import dayjs from 'dayjs';
+import { Modal, Button, Input, Select, message, Typography, DatePicker } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
@@ -176,9 +177,21 @@ export default function DocEditor() {
             />
             <Select value={field.type} onChange={v => updateField(index, 'type', v)}
               style={{ width: 170 }} size="middle" options={TYPE_OPTIONS} />
-            <Input placeholder={field.type === 'object' ? '{"key": "value"}' : field.type === 'array' ? '[1, 2, 3]' : field.type === 'boolean' ? 'true / false' : '值'} value={field.value} onChange={e => updateField(index, 'value', e.target.value)}
-              style={{ flex: 1 }}
-              disabled={field.type === 'null'} />
+            {field.type === 'date' ? (
+              <DatePicker
+                value={field.value ? (typeof field.value === 'string' && field.value.includes('T') ? dayjs(field.value) : field.value ? dayjs(field.value) : null) : null}
+                onChange={(date, dateStr) => updateField(index, 'value', dateStr || '')}
+                style={{ flex: 1 }}
+                size="middle"
+                format="YYYY-MM-DD HH:mm:ss"
+                showTime
+                placeholder="选择日期"
+              />
+            ) : (
+              <Input placeholder={field.type === 'object' ? '{"key": "value"}' : field.type === 'array' ? '[1, 2, 3]' : field.type === 'boolean' ? 'true / false' : '值'} value={field.value} onChange={e => updateField(index, 'value', e.target.value)}
+                style={{ flex: 1 }}
+                disabled={field.type === 'null'} />
+            )}
             <Button icon={<DeleteOutlined />} danger type="text" onClick={() => removeField(index)}
               disabled={editingMode === 'edit' && field.originalKey === '_id'} />
           </div>
