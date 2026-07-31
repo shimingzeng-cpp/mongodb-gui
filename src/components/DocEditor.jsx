@@ -73,6 +73,12 @@ export default function DocEditor() {
   const [fields, setFields] = useState([]);
   const [saving, setSaving] = useState(false);
   const [schemaFields, setSchemaFields] = useState([]);
+  const [schemaFieldTypes, setSchemaFieldTypes] = useState({}); // 字段名 → 类型
+
+  // Schema 类型映射
+  const SCHEMA_TO_DISPLAY = {
+    int: 'int32', long: 'int64', binData: 'binary', javascript: 'code',
+  };
 
   // 从已有文档和 Schema 定义中提取字段名
   const fieldNames = React.useMemo(() => {
@@ -84,30 +90,36 @@ export default function DocEditor() {
 
   useEffect(() => {
     if (editingDoc && editingMode) {
-      // 加载 Schema 字段定义
-      if (selectedDb && selectedCollection) {
-        window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection)
-          .then(schema => {
+      const buildFields = async () => {
+        let schemaTypes = {};
+        if (selectedDb && selectedCollection) {
+          try {
+            const schema = await window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection);
             if (schema.validator && schema.validator.$jsonSchema) {
               const props = schema.validator.$jsonSchema.properties || {};
-              const names = Object.keys(props);
-              setSchemaFields(names);
+              setSchemaFields(Object.keys(props));
+              Object.entries(props).forEach(([name, def]) => {
+                schemaTypes[name] = SCHEMA_TO_DISPLAY[def.bsonType] || def.bsonType || 'string';
+              });
+              setSchemaFieldTypes(schemaTypes);
             }
-          })
-          .catch(() => {});
-      }
+          } catch {}
+        }
 
-      const list = Object.entries(editingDoc)
-        .map(([key, value]) => ({
-        key,
-        type: inferType(value),
-        value: formatValue(value),
-        originalKey: key,
-      }));
-      setFields(list.length > 0 ? list : [{ key: '', type: 'string', value: '' }]);
+        const list = Object.entries(editingDoc)
+          .map(([key, value]) => ({
+          key,
+          type: schemaTypes[key] || inferType(value),
+          value: formatValue(value),
+          originalKey: key,
+        }));
+        setFields(list.length > 0 ? list : [{ key: '', type: 'string', value: '' }]);
+      };
+      buildFields();
     } else {
       setFields([]);
       setSchemaFields([]);
+      setSchemaFieldTypes({});
     }
   }, [editingDoc, editingMode, selectedDb, selectedCollection]);
 
