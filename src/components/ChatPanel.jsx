@@ -152,7 +152,7 @@ export default function ChatPanel() {
     while (round < MAX_ROUNDS) {
       if (interrupt) {
         setMessages(prev => prev.map(m =>
-          m.time === mainMsg.time ? { ...m, content: '⏸️ 已中断', totalRounds: `${round}/${MAX_ROUNDS}` } : m
+          m.time === mainMsg.time ? { ...m, content: '⏸️ 已中断', totalRounds: '已中断' } : m
         ));
         return;
       }
@@ -215,7 +215,7 @@ export default function ChatPanel() {
           m.time === mainMsg.time ? {
             ...m, content: parsed.reply || reply,
             commands, action: parsed.action, actionParams,
-            executed: true, execResults, round, totalRounds: `${round}/${round}`,
+            executed: true, execResults, round, totalRounds: `${round} 轮`,
             steps: [...(m.steps || []), step],
           } : m
         ));
@@ -235,7 +235,7 @@ export default function ChatPanel() {
           m.time === mainMsg.time ? {
             ...m, content: `正在执行第 ${round} 步：${(parsed.reply || reply).substring(0, 100)}...`,
             commands, action: parsed.action, actionParams,
-            executed: true, execResults, round, totalRounds: `>${round}`,
+            executed: true, execResults, round, totalRounds: `第${round}步`,
             steps: [...(m.steps || []), step],
           } : m
         ));
@@ -246,7 +246,7 @@ export default function ChatPanel() {
     setMessages(prev => prev.map(m =>
       m.time === mainMsg.time ? {
         ...m, content: `⚠️ 已达到最大 ${MAX_ROUNDS} 轮限制，自动结束。如果需要继续，请再说一次。`,
-        totalRounds: `${MAX_ROUNDS}/${MAX_ROUNDS}`,
+        totalRounds: `已达上限`,
       } : m
     ));
   };
@@ -432,7 +432,7 @@ export default function ChatPanel() {
                 }}>
                   <div style={{ fontSize: 12, color: t.text.subtle, marginBottom: 4 }}>
                     {msg.round && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
-                      {msg.round}/{msg.totalRounds}
+                      {msg.totalRounds}
                     </Tag>}
                   </div>
                   <Text style={{ color: msg.isError ? t.error : msg.isWarning ? t.warning : t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>
