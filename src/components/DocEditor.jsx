@@ -113,6 +113,14 @@ export default function DocEditor() {
           value: formatValue(value),
           originalKey: key,
         }));
+
+        // 补充 Schema 有定义但文档中不存在的字段（显示为空）
+        Object.keys(schemaTypes).forEach(name => {
+          if (!list.find(f => f.key === name)) {
+            list.push({ key: name, type: schemaTypes[name], value: '', originalKey: name });
+          }
+        });
+
         setFields(list.length > 0 ? list : [{ key: '', type: 'string', value: '' }]);
       };
       buildFields();
