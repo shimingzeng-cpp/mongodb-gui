@@ -139,6 +139,8 @@ export default function DocEditor() {
     const doc = {};
     fields.forEach(f => {
       if (!f.key.trim() || f.key === '_id') return;
+      // 空值不保存（跳过，让 MongoDB 保持原值或使用默认值）
+      if (f.value === '' || f.value === null || f.value === undefined) return;
       doc[f.key] = parseValue(f.value, f.type);
     });
 
