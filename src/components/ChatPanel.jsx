@@ -81,28 +81,54 @@ export default function ChatPanel() {
   const MAX_ROUNDS = 10;
 
   const agentLoop = async (userInput) => {
+    try {
+      // 整个函数体包在 try 中，以便精确捕获错误
+      return await agentLoopImpl(userInput);
+    } catch (err) {
+      console.error('[AgentLoop Error]', err);
+      setMessages(prev => prev.map(m => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content === '正在思考...') {
+          return { ...lastMsg, content: '抱歉，执行出错: ' + err.message, isError: true };
+        }
+        return m;
+      }));
+      // 重新抛出给 send 的 catch
+      throw err;
+    }
+  };
+
+  const agentLoopImpl = async (userInput) => {
     setInterrupt(false);
     setAgentRound(0);
 
-    // 收集上下文
-    const cols = selectedDb ? await window.__mongo.listCollections(activeConnectionId, selectedDb).catch(() => []) : [];
-    const colNames = cols.map(c => c.name);
-    const fieldNames = documents.length > 0 ? Object.keys(documents[0]) : [];
-    const sampleDocs = documents.slice(0, 3);
+    // 安全获取上下文
+    const safeDocs = Array.isArray(documents) ? documents : [];
+    const safeSelectedDb = selectedDb || '';
+    const safeActiveId = activeConnectionId || '';
+
+    let cols = [], colNames = [];
+    try {
+      cols = safeSelectedDb ? await window.__mongo.listCollections(safeActiveId, safeSelectedDb).catch(() => []) : [];
+      colNames = Array.isArray(cols) ? cols.map(c => c && c.name) : [];
+    } catch {}
+
+    const fieldNames = safeDocs.length > 0 ? Object.keys(safeDocs[0] || {}) : [];
+    const sampleDocs = safeDocs.slice(0, 3);
 
     let schemaFields = [];
-    if (selectedDb && selectedCollection) {
+    if (safeSelectedDb && selectedCollection) {
       try {
-        const schema = await window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection);
-        if (schema.validator && schema.validator.$jsonSchema) {
+        const schema = await window.__mongo.getCollectionSchema(safeActiveId, safeSelectedDb, selectedCollection);
+        if (schema && schema.validator && schema.validator.$jsonSchema) {
           schemaFields = Object.keys(schema.validator.$jsonSchema.properties || {}).filter(k => k !== '_id');
         }
       } catch {}
     }
 
     const systemPrompt = buildSystemPrompt({
-      dbName: selectedDb, collections: colNames, fieldNames, sampleDocs,
-      selectedCollection, totalDocs, schemaFields, memorySummary: buildMemorySummary(),
+      dbName: safeSelectedDb, collections: colNames, fieldNames, sampleDocs,
+      selectedCollection, totalDocs: totalDocs || 0, schemaFields, memorySummary: buildMemorySummary(),
     });
 
     // 构建消息历史
@@ -160,14 +186,14 @@ export default function ChatPanel() {
       const execResults = [];
       for (const cmd of commands) {
         if (cmd && typeof cmd === 'string' && cmd.trim()) {
-          const result = await window.__mongo.executeShell(activeConnectionId, selectedDb, cmd);
+          const result = await window.__mongo.executeShell(safeActiveId, safeSelectedDb, cmd);
           execResults.push(result);
           // 刷新 UI
           if (result.success) {
             const lower = cmd.toLowerCase();
             if (lower.includes('drop') || lower.includes('insert') || lower.includes('update') || lower.includes('delete') || lower.includes('createcollection') || lower.includes('rename') || lower.includes('createindex') || lower.includes('dropindex')) {
               if (lower.includes('database') || lower.includes('drop(') || lower.includes('drop())') || lower.includes('createcollection')) {
-                try { const dbs = await window.__mongo.listDatabases(activeConnectionId); setDatabases(dbs); } catch {}
+                try { const dbs = await window.__mongo.listDatabases(safeActiveId); setDatabases(dbs); } catch {}
               }
               doRefresh();
               triggerReload();
@@ -274,7 +300,7 @@ export default function ChatPanel() {
         if (isMutation) {
           if (lower.includes('database') || lower.includes('drop(') || lower.includes('drop())') || lower.includes('createcollection')) {
             try {
-              const dbs = await window.__mongo.listDatabases(activeConnectionId);
+              const dbs = await window.__mongo.listDatabases(safeActiveId);
               setDatabases(dbs);
             } catch {}
           }
@@ -308,15 +334,18 @@ export default function ChatPanel() {
 
   // 构建记忆摘要：从历史消息中提取关键操作记录
   const buildMemorySummary = () => {
-    const actions = messages.filter(m => m.role === 'assistant' && m.executed && (m.commands?.length || m.action));
-    if (actions.length === 0) return '';
-    const recent = actions.slice(-10);
-    const lines = recent.map(m => {
-      const cmds = m.commands?.join('; ') || '';
-      const act = m.action || '';
-      return `[${new Date(m.time).toLocaleTimeString()}] ${act ? `操作:${act}` : ''} ${cmds ? `命令:${cmds}` : ''}`;
-    });
-    return `\n## 本次会话历史记录（最近操作）\n${lines.join('\n')}\n`;
+    try {
+      const msgs = Array.isArray(messages) ? messages : [];
+      const actions = msgs.filter(m => m && m.role === 'assistant' && m.executed && (m.commands?.length || m.action));
+      if (actions.length === 0) return '';
+      const recent = actions.slice(-10);
+      const lines = recent.map(m => {
+        const cmds = Array.isArray(m.commands) ? m.commands.join('; ') : '';
+        const act = m.action || '';
+        return `[${new Date(m.time).toLocaleTimeString()}] ${act ? `操作:${act}` : ''} ${cmds ? `命令:${cmds}` : ''}`;
+      });
+      return `\n## 本次会话历史记录（最近操作）\n${lines.join('\n')}\n`;
+    } catch { return ''; }
   };
 
   const renderExecResult = (result, idx) => {
