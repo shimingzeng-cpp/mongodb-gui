@@ -23,6 +23,9 @@ export default function DbTree() {
       const dbs = await window.__mongo.listDatabases(activeConnectionId);
       setDatabases(dbs);
       setCollections({});
+      setSelectedDb(null);
+      setSelectedCollection(null);
+      setDocuments([], 0);
       message.success('已刷新');
     } catch (err) { message.error('刷新失败: ' + err.message); }
   };
