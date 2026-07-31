@@ -33,7 +33,7 @@ const BSON_TYPES = [
 ];
 
 export default function SchemaModal() {
-  const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId } = useStore();
+  const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId, documents } = useStore();
   const t = useTheme();
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -54,26 +54,57 @@ export default function SchemaModal() {
     try {
       const result = await window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection);
       setSchema(result);
+
+      // 1. 从文档中提取所有字段名
+      const docFieldNames = new Set();
+      (documents || []).forEach(doc => Object.keys(doc).forEach(k => docFieldNames.add(k)));
+
+      // 2. 从 Schema 中提取字段定义
+      const schemaProps = {};
+      let req = [];
       if (result.validator && result.validator.$jsonSchema) {
         const s = result.validator.$jsonSchema;
-        const req = s.required || [];
-        // 确保 _id 必填
-        if (!req.includes('_id')) req.unshift('_id');
-        setRequiredFields(req);
-        const props = s.properties ? Object.entries(s.properties).map(([name, def]) => ({
-          name, type: def.bsonType || 'string', ...def,
-        })) : [];
-        // 确保 _id 始终在字段列表中
-        if (!props.find(p => p.name === '_id')) {
-          props.unshift({ name: '_id', type: 'objectId' });
+        req = s.required || [];
+        if (s.properties) {
+          Object.entries(s.properties).forEach(([name, def]) => {
+            schemaProps[name] = def.bsonType || 'string';
+          });
         }
-        setProperties(props);
-        setJsonText(JSON.stringify(result.validator, null, 2));
-      } else {
-        setRequiredFields(['_id']);
-        setProperties([{ name: '_id', type: 'objectId' }]);
-        setJsonText('');
       }
+
+      // 3. 合并：文档字段 + Schema 字段，Schema 类型优先
+      const mergedProps = [];
+      const seen = new Set();
+
+      // 先处理 Schema 中定义的字段（保持顺序）
+      if (result.validator && result.validator.$jsonSchema && result.validator.$jsonSchema.properties) {
+        Object.keys(result.validator.$jsonSchema.properties).forEach(name => {
+          if (!seen.has(name)) {
+            mergedProps.push({ name, type: schemaProps[name] || 'string' });
+            seen.add(name);
+          }
+        });
+      }
+
+      // 再处理文档中有但 Schema 中没有的字段
+      docFieldNames.forEach(name => {
+        if (!seen.has(name)) {
+          mergedProps.push({ name, type: schemaProps[name] || 'string' });
+          seen.add(name);
+        }
+      });
+
+      // 确保 _id 必填
+      if (!req.includes('_id')) req.unshift('_id');
+      setRequiredFields(req);
+
+      // 确保 _id 在字段列表首位
+      if (!seen.has('_id')) {
+        mergedProps.unshift({ name: '_id', type: 'objectId' });
+      }
+
+      setProperties(mergedProps);
+      setJsonText(result.validator ? JSON.stringify(result.validator, null, 2) : '');
     } catch (err) { message.error('加载 Schema 失败: ' + err.message); }
     setLoading(false);
   };
