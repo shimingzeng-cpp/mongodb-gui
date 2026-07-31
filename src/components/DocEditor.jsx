@@ -142,7 +142,10 @@ export default function DocEditor() {
     setSaving(true);
     try {
       if (editingMode === 'edit' && editingDoc._id) {
-        await window.__mongo.updateDocument(activeConnectionId, selectedDb, selectedCollection, { _id: editingDoc._id }, doc);
+        // 编辑模式：合并原文档 + 编辑字段，使用 replaceOne 确保 Schema 验证通过
+        const fullDoc = { ...editingDoc, ...doc };
+        delete fullDoc._id;
+        await window.__mongo.updateDocument(activeConnectionId, selectedDb, selectedCollection, { _id: editingDoc._id }, fullDoc, { replace: true });
         message.success('更新成功');
       } else {
         await window.__mongo.insertDocument(activeConnectionId, selectedDb, selectedCollection, doc);
