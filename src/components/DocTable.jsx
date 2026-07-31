@@ -147,9 +147,12 @@ export default function DocTable() {
   }, [selectedDb, selectedCollection, reloadKey]);
 
   useEffect(() => {
-    if (documents.length === 0) { setColumns([]); return; }
     const keys = new Set();
-    documents.forEach(doc => Object.keys(doc).forEach(k => {  keys.add(k); }));
+    // 从文档中提取字段
+    documents.forEach(doc => Object.keys(doc).forEach(k => keys.add(k)));
+    // 从 Schema 中补充字段（即使文档中没有该字段，也能显示）
+    Object.keys(schemaTypes).forEach(k => keys.add(k));
+    if (keys.size === 0) { setColumns([]); return; }
     setColumns(Array.from(keys).map(key => ({
       title: <span>{key} <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0 }}>{schemaTypes[key] || inferFieldType(documents, key)}</Tag></span>, dataIndex: key, key,
       width: 160, ellipsis: true,
@@ -180,7 +183,7 @@ export default function DocTable() {
         return renderCellValue(val, record, key);
       },
     })));
-  }, [documents]);
+  }, [documents, schemaTypes]);
 
   const renderCellValue = (val, record, field) => {
     const startEdit = () => {
