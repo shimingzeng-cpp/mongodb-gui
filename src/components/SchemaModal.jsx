@@ -43,7 +43,7 @@ const BSON_TYPE_TO_DISPLAY = {
 };
 
 export default function SchemaModal() {
-  const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId } = useStore();
+  const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId, triggerReload, doRefresh } = useStore();
   const t = useTheme();
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -152,6 +152,8 @@ export default function SchemaModal() {
       }
       await window.__mongo.setCollectionSchema(activeConnectionId, selectedDb, selectedCollection, validator);
       message.success('Schema 保存成功');
+      triggerReload();
+      doRefresh();
       setSchemaOpen(false);
     } catch (err) { message.error('保存失败: ' + err.message); }
     setSaving(false);

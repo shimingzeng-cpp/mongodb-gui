@@ -74,7 +74,7 @@ export default function DocTable() {
     selectedDb, selectedCollection,
     documents, totalDocs, page, pageSize,
     setPage, setPageSize, setDocuments, filter, setFilter, setEditingDoc, setSchemaOpen, setIndexOpen, setExportOpen, reloadKey,
-    activeConnectionId,
+    activeConnectionId, triggerReload, doRefresh,
   } = useStore();
   const t = useTheme();
 
@@ -389,6 +389,12 @@ export default function DocTable() {
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
         <Text type="secondary">共 {totalDocs} 条，第 {page} 页</Text>
         <Space size="small">
+          <Button
+            size="small"
+            icon={<ReloadOutlined />}
+            onClick={() => { triggerReload(); doRefresh(); }}
+            title="刷新数据"
+          />
           <Button
             type={showFilter ? 'primary' : 'default'}
             size="small"
