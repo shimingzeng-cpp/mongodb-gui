@@ -65,110 +65,193 @@ export default function ChatPanel() {
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
 
-    try {
-      // 获取丰富的上下文
-      const cols = selectedDb ? await window.__mongo.listCollections(activeConnectionId, selectedDb).catch(() => []) : [];
-      const colNames = cols.map(c => c.name);
-      const fieldNames = documents.length > 0 ? Object.keys(documents[0]) : [];
-      const sampleDocs = documents.slice(0, 3);
+    // 启动 Agent 循环
+    await agentLoop([...messages, userMsg], text);
 
-      // 获取 Schema 字段定义
-      let schemaFields = [];
-      if (selectedDb && selectedCollection) {
-        try {
-          const schema = await window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection);
-          if (schema.validator && schema.validator.$jsonSchema) {
-            schemaFields = Object.keys(schema.validator.$jsonSchema.properties || {}).filter(k => k !== '_id');
-          }
-        } catch {}
-      }
-
-      const systemPrompt = buildSystemPrompt({
-        dbName: selectedDb,
-        collections: colNames,
-        fieldNames,
-        sampleDocs,
-        selectedCollection,
-        totalDocs,
-        schemaFields,
-        memorySummary: buildMemorySummary(),
-      });
-
-      const reply = await chatCompletion(
-        aiConfig.url,
-        aiConfig.key,
-        aiConfig.model,
-        [
-          { role: 'system', content: systemPrompt },
-          ...messages.slice(-20).map(m => ({ role: m.role, content: m.content })),
-          { role: 'user', content: text },
-        ]
-      );
-
-      // 解析 AI 回复
-      let parsed;
-      try {
-        parsed = JSON.parse(reply);
-      } catch {
-        // 如果不是 JSON，当作纯文本回复
-        parsed = { reply: reply, commands: [], action: '' };
-      }
-
-      // 兼容旧格式：如果返回的是单条 command 而非 commands 数组
-      const commands = parsed.commands || (parsed.command ? [parsed.command] : []);
-      const actionParams = parsed.actionParams || {};
-
-      const aiMsg = {
-        role: 'assistant',
-        content: parsed.reply || reply,
-        commands: commands,
-        action: parsed.action || '',
-        actionParams: actionParams,
-        time: Date.now(),
-        executed: false,
-        execResults: [],
-      };
-      setMessages(prev => [...prev, aiMsg]);
-
-      // 处理 action（UI 操作）
-      const action = parsed.action || '';
-      if (action === 'backup' || action === 'restore') {
-        setBackupOpen(true);
-        aiMsg.executed = true;
-      } else if (action === 'switch_db' && actionParams.db) {
-        setSelectedDb(actionParams.db);
-        aiMsg.executed = true;
-        doRefresh();
-      } else if (action === 'switch_collection' && actionParams.db && actionParams.collection) {
-        setSelectedDb(actionParams.db);
-        setSelectedCollection(actionParams.collection);
-        aiMsg.executed = true;
-        triggerReload();
-      } else if (action === 'open_schema') {
-        setSchemaOpen(true);
-        aiMsg.executed = true;
-      } else if (action === 'open_export') {
-        setExportOpen(true);
-        aiMsg.executed = true;
-      }
-
-      // 自动执行所有命令（按顺序）
-      if (commands.length > 0) {
-        for (const cmd of commands) {
-          if (cmd.trim()) {
-            await executeCommand(cmd, aiMsg);
-          }
-        }
-      }
-    } catch (err) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '抱歉，请求失败: ' + err.message,
-        time: Date.now(),
-        isError: true,
-      }]);
-    }
     setLoading(false);
+  };
+
+  // Agent 多轮自主循环
+  const [interrupt, setInterrupt] = useState(false);
+  const [agentRound, setAgentRound] = useState(0);
+  const MAX_ROUNDS = 10;
+
+  const agentLoop = async (currentMessages, userInput) => {
+    setInterrupt(false);
+    setAgentRound(0);
+
+    // 收集上下文
+    const cols = selectedDb ? await window.__mongo.listCollections(activeConnectionId, selectedDb).catch(() => []) : [];
+    const colNames = cols.map(c => c.name);
+    const fieldNames = documents.length > 0 ? Object.keys(documents[0]) : [];
+    const sampleDocs = documents.slice(0, 3);
+
+    let schemaFields = [];
+    if (selectedDb && selectedCollection) {
+      try {
+        const schema = await window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection);
+        if (schema.validator && schema.validator.$jsonSchema) {
+          schemaFields = Object.keys(schema.validator.$jsonSchema.properties || {}).filter(k => k !== '_id');
+        }
+      } catch {}
+    }
+
+    const systemPrompt = buildSystemPrompt({
+      dbName: selectedDb, collections: colNames, fieldNames, sampleDocs,
+      selectedCollection, totalDocs, schemaFields, memorySummary: buildMemorySummary(),
+    });
+
+    // 构建消息历史（system + 历史 + 当前用户输入）
+    const buildHistory = (extraContent) => [
+      { role: 'system', content: systemPrompt },
+      ...currentMessages.slice(-20).map(m => ({ role: m.role, content: m.content })),
+      ...(extraContent ? [{ role: 'user', content: extraContent }] : []),
+    ];
+
+    let lastReply = userInput;
+    let round = 0;
+
+    while (round < MAX_ROUNDS) {
+      if (interrupt) {
+        setMessages(prev => [...prev, {
+          role: 'assistant', content: '⏸️ 已中断', time: Date.now(), isInterrupt: true,
+        }]);
+        return;
+      }
+
+      round++;
+      setAgentRound(round);
+
+      try {
+        const reply = await chatCompletion(
+          aiConfig.url, aiConfig.key, aiConfig.model, buildHistory(lastReply)
+        );
+
+        let parsed;
+        try {
+          parsed = JSON.parse(reply);
+        } catch {
+          parsed = { reply, commands: [], action: '' };
+        }
+
+        const commands = parsed.commands || (parsed.command ? [parsed.command] : []);
+        const actionParams = parsed.actionParams || {};
+        const done = parsed.done !== false; // 默认 true（兼容旧格式）
+
+        if (round === 1) {
+          // 第一轮：创建 AI 消息并显示
+          const aiMsg = {
+            role: 'assistant',
+            content: parsed.reply || reply,
+            commands, action: parsed.action || '', actionParams,
+            time: Date.now(), executed: false, execResults: [], round, totalRounds: '?',
+          };
+
+          // 先处理 action
+          handleAction(parsed.action, actionParams);
+
+          // 执行命令
+          if (commands.length > 0) {
+            for (const cmd of commands) {
+              if (cmd.trim()) await executeCommand(cmd, aiMsg);
+            }
+          }
+
+          // 更新轮次标记
+          setMessages(prev => prev.map(m =>
+            m.time === aiMsg.time ? { ...m, totalRounds: done ? round : `>${round}` } : m
+          ));
+
+          if (done) return; // 一轮完成
+
+          // 构建后续输入：命令执行结果
+          const results = aiMsg.execResults || [];
+          const resultText = results.map((r, i) => {
+            const cmd = commands[i] || '';
+            if (r.success) return `[命令: ${cmd}] 执行结果: ${JSON.stringify(r.data)}`;
+            return `[命令: ${cmd}] 执行失败: ${r.error}`;
+          }).join('\n');
+
+          lastReply = `以上命令的执行结果：\n${resultText}\n\n请根据这些结果继续下一步。如果任务完成，请设 done: true 并总结。`;
+
+        } else {
+          // 后续轮次：追加到上一条消息，展示为子步骤
+          const stepMsg = {
+            role: 'assistant',
+            content: `**[第${round}步]** ${parsed.reply || reply}`,
+            commands, action: parsed.action || '', actionParams,
+            time: Date.now() + round, // 确保唯一 time
+            executed: false, execResults: [], round, totalRounds: done ? round : `>${round}`,
+            isSubStep: true,
+          };
+          setMessages(prev => [...prev, stepMsg]);
+
+          // 处理 action
+          handleAction(parsed.action, actionParams);
+
+          // 执行命令
+          if (commands.length > 0) {
+            for (const cmd of commands) {
+              if (cmd.trim()) await executeCommand(cmd, stepMsg);
+            }
+          }
+
+          // 更新轮次
+          setMessages(prev => prev.map(m =>
+            m.time === stepMsg.time ? { ...m, totalRounds: done ? round : `>${round}` } : m
+          ));
+
+          if (done) return;
+
+          const results = stepMsg.execResults || [];
+          const resultText = results.map((r, i) => {
+            const cmd = commands[i] || '';
+            if (r.success) return `[命令: ${cmd}] 执行结果: ${JSON.stringify(r.data)}`;
+            return `[命令: ${cmd}] 执行失败: ${r.error}`;
+          }).join('\n');
+
+          lastReply = `以上命令的执行结果：\n${resultText}\n\n请根据这些结果继续下一步。如果任务完成，请设 done: true 并总结。`;
+        }
+      } catch (err) {
+        // 错误时继续尝试
+        lastReply = `执行出错: ${err.message}。请尝试其他方式继续，或设 done: true 结束。`;
+      }
+    }
+
+    // 达到最大轮次
+    setMessages(prev => [...prev, {
+      role: 'assistant', content: `⚠️ 已达到最大 ${MAX_ROUNDS} 轮限制，自动结束。如果需要继续，请再说一次。`,
+      time: Date.now(), isWarning: true,
+    }]);
+  };
+
+  // 处理 action
+  const handleAction = (action, actionParams) => {
+    if (action === 'backup' || action === 'restore') {
+      setBackupOpen(true);
+    } else if (action === 'switch_db' && actionParams?.db) {
+      setSelectedDb(actionParams.db);
+      doRefresh();
+    } else if (action === 'switch_collection' && actionParams?.db && actionParams?.collection) {
+      setSelectedDb(actionParams.db);
+      setSelectedCollection(actionParams.collection);
+      triggerReload();
+    } else if (action === 'open_schema') {
+      setSchemaOpen(true);
+    } else if (action === 'open_export') {
+      setExportOpen(true);
+    } else if (action === 'open_db' && actionParams?.db) {
+      setSelectedDb(actionParams.db);
+      doRefresh();
+    } else if (action === 'close_db') {
+      useStore.getState().closeDb();
+      doRefresh();
+    } else if (action === 'close_collection') {
+      useStore.getState().closeCollection();
+    } else if (action === 'refresh') {
+      doRefresh();
+      triggerReload();
+    }
   };
 
   const executeCommand = async (command, msgObj) => {
@@ -189,14 +272,12 @@ export default function ChatPanel() {
           lower.includes('createcollection') || lower.includes('rename') ||
           lower.includes('createindex') || lower.includes('dropindex');
         if (isMutation) {
-          // 刷新数据库列表
           if (lower.includes('database') || lower.includes('drop(') || lower.includes('drop())') || lower.includes('createcollection')) {
             try {
               const dbs = await window.__mongo.listDatabases(activeConnectionId);
               setDatabases(dbs);
             } catch {}
           }
-          // 刷新集合缓存和文档
           doRefresh();
           triggerReload();
         }
@@ -313,12 +394,19 @@ export default function ChatPanel() {
             {/* AI 消息 */}
             {msg.role === 'assistant' && (
               <div style={{ display: 'flex', gap: 8 }}>
-                <RobotOutlined style={{ color: t.info, marginTop: 4 }} />
+                <RobotOutlined style={{ color: msg.isSubStep ? t.text.subtle : t.info, marginTop: 4 }} />
                 <div style={{
-                  background: t.bg.highlightBlue, padding: '8px 12px', borderRadius: 12,
+                  background: msg.isSubStep ? t.bg.panel : t.bg.highlightBlue,
+                  padding: '8px 12px', borderRadius: 12,
                   maxWidth: '80%', borderBottomLeftRadius: 4,
+                  opacity: msg.isSubStep ? 0.9 : 1,
                 }}>
-                  <Text style={{ color: msg.isError ? t.error : t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                  <div style={{ fontSize: 12, color: t.text.subtle, marginBottom: 4 }}>
+                    {msg.round && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
+                      {msg.round}/{msg.totalRounds}
+                    </Tag>}
+                  </div>
+                  <Text style={{ color: msg.isError ? t.error : msg.isWarning ? t.warning : t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>
                     {msg.content}
                   </Text>
                   {msg.commands && msg.commands.length > 0 && (
@@ -382,9 +470,18 @@ export default function ChatPanel() {
           </div>
         ))}
         {loading && (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <RobotOutlined style={{ color: t.info, marginTop: 4 }} />
             <Spin size="small" />
+            {agentRound > 0 && (
+              <Text style={{ color: t.text.subtle, fontSize: 11 }}>
+                第 {agentRound} 轮思考中...
+              </Text>
+            )}
+            <Button size="small" danger type="link" onClick={() => setInterrupt(true)}
+              style={{ fontSize: 11, padding: 0 }}>
+              中断
+            </Button>
           </div>
         )}
         <div ref={bottomRef} />
