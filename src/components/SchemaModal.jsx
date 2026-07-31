@@ -112,6 +112,13 @@ export default function SchemaModal() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // 系统数据库不允许设置文档验证器
+      const systemDbs = ['admin', 'config', 'local'];
+      if (systemDbs.includes(selectedDb)) {
+        message.warning(`数据库 "${selectedDb}" 是系统数据库，不支持设置字段验证`);
+        setSaving(false);
+        return;
+      }
       let validator;
       if (showJson) {
         validator = jsonText.trim() ? JSON.parse(jsonText) : {};
@@ -177,19 +184,21 @@ export default function SchemaModal() {
     }
   };
 
+  const isSystemDb = ['admin', 'config', 'local'].includes(selectedDb);
+
   return (
     <Modal
-      title={<span><SafetyCertificateOutlined style={{ color: t.accent, marginRight: 8 }} />字段验证 - {selectedCollection}</span>}
+      title={<span><SafetyCertificateOutlined style={{ color: t.accent, marginRight: 8 }} />字段验证 - {selectedCollection}{isSystemDb ? <Tag color="warning" style={{ marginLeft: 8 }}>系统数据库只读</Tag> : ''}</span>}
       open={schemaOpen}
       onCancel={() => setSchemaOpen(false)}
       width={700}
       footer={[
         <Popconfirm key="remove" title="确认移除所有 Schema 验证规则?" onConfirm={handleRemove} okText="移除" okType="danger" cancelText="取消">
-          <Button danger>移除规则</Button>
+          <Button danger disabled={isSystemDb}>移除规则</Button>
         </Popconfirm>,
         <Button key="json" onClick={() => setShowJson(!showJson)}>{showJson ? '可视化' : 'JSON 编辑'}</Button>,
         <Button key="cancel" onClick={() => setSchemaOpen(false)}>取消</Button>,
-        <Button key="save" type="primary" loading={saving} onClick={handleSave}>保存</Button>,
+        <Button key="save" type="primary" loading={saving} onClick={handleSave} disabled={isSystemDb}>保存</Button>,
       ]}
     >
       {!showJson ? (
@@ -219,7 +228,7 @@ export default function SchemaModal() {
                 )}
               </div>
             ))}
-            <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addProperty} style={{ marginTop: 4 }}>添加字段</Button>
+            <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addProperty} disabled={isSystemDb} style={{ marginTop: 4 }}>添加字段</Button>
           </div>
         </div>
       ) : (
