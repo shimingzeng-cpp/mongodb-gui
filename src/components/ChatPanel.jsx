@@ -8,7 +8,7 @@ const { chatCompletion, buildSystemPrompt } = window.__ai;
 const { Text } = Typography;
 
 export default function ChatPanel() {
-  const { selectedDb, documents, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb, setDatabases, doRefresh, triggerReload } = useStore();
+  const { selectedDb, selectedCollection, documents, totalDocs, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb, setSelectedCollection, setDatabases, doRefresh, triggerReload, setSchemaOpen, setExportOpen } = useStore();
   const t = useTheme();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -37,13 +37,32 @@ export default function ChatPanel() {
     setLoading(true);
 
     try {
-      // 获取当前数据库上下文
+      // 获取丰富的上下文
       const cols = selectedDb ? await window.__mongo.listCollections(activeConnectionId, selectedDb).catch(() => []) : [];
       const colNames = cols.map(c => c.name);
       const fieldNames = documents.length > 0 ? Object.keys(documents[0]) : [];
       const sampleDocs = documents.slice(0, 3);
 
-      const systemPrompt = buildSystemPrompt(selectedDb, colNames, fieldNames, sampleDocs);
+      // 获取 Schema 字段定义
+      let schemaFields = [];
+      if (selectedDb && selectedCollection) {
+        try {
+          const schema = await window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection);
+          if (schema.validator && schema.validator.$jsonSchema) {
+            schemaFields = Object.keys(schema.validator.$jsonSchema.properties || {}).filter(k => k !== '_id');
+          }
+        } catch {}
+      }
+
+      const systemPrompt = buildSystemPrompt({
+        dbName: selectedDb,
+        collections: colNames,
+        fieldNames,
+        sampleDocs,
+        selectedCollection,
+        totalDocs,
+        schemaFields,
+      });
 
       const reply = await chatCompletion(
         aiConfig.url,
@@ -67,12 +86,14 @@ export default function ChatPanel() {
 
       // 兼容旧格式：如果返回的是单条 command 而非 commands 数组
       const commands = parsed.commands || (parsed.command ? [parsed.command] : []);
+      const actionParams = parsed.actionParams || {};
 
       const aiMsg = {
         role: 'assistant',
         content: parsed.reply || reply,
         commands: commands,
         action: parsed.action || '',
+        actionParams: actionParams,
         time: Date.now(),
         executed: false,
         execResults: [],
@@ -80,11 +101,24 @@ export default function ChatPanel() {
       setMessages(prev => [...prev, aiMsg]);
 
       // 处理 action（UI 操作）
-      if (parsed.action === 'backup') {
+      const action = parsed.action || '';
+      if (action === 'backup' || action === 'restore') {
         setBackupOpen(true);
         aiMsg.executed = true;
-      } else if (parsed.action === 'restore') {
-        setBackupOpen(true);
+      } else if (action === 'switch_db' && actionParams.db) {
+        setSelectedDb(actionParams.db);
+        aiMsg.executed = true;
+        doRefresh();
+      } else if (action === 'switch_collection' && actionParams.db && actionParams.collection) {
+        setSelectedDb(actionParams.db);
+        setSelectedCollection(actionParams.collection);
+        aiMsg.executed = true;
+        triggerReload();
+      } else if (action === 'open_schema') {
+        setSchemaOpen(true);
+        aiMsg.executed = true;
+      } else if (action === 'open_export') {
+        setExportOpen(true);
         aiMsg.executed = true;
       }
 
@@ -199,13 +233,15 @@ export default function ChatPanel() {
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', color: t.text.muted, padding: 40, fontSize: 13 }}>
             <RobotOutlined style={{ fontSize: 32, marginBottom: 12 }} />
-            <div>AI Agent 已就绪，可以直接操作数据库</div>
+            <div>AI Agent 已就绪，可以直接操作数据库和 UI</div>
             <div style={{ marginTop: 8, fontSize: 12 }}>
               试试对我说：<br />
               "查询所有玩家"<br />
               "新增一个玩家叫张三，20岁"<br />
               "把张三年龄改成25"<br />
               "统计一共有多少玩家"<br />
+              "切换到 test 数据库"<br />
+              "查看当前集合的 Schema"<br />
               "备份当前数据库"
             </div>
           </div>
@@ -269,6 +305,26 @@ export default function ChatPanel() {
                   {msg.action === 'restore' && msg.executed && (
                     <div style={{ marginTop: 6 }}>
                       <Tag color="blue" icon={<DownloadOutlined />}>已打开恢复面板</Tag>
+                    </div>
+                  )}
+                  {msg.action === 'switch_db' && msg.executed && (
+                    <div style={{ marginTop: 6 }}>
+                      <Tag color="green">已切换到数据库 {msg.actionParams?.db}</Tag>
+                    </div>
+                  )}
+                  {msg.action === 'switch_collection' && msg.executed && (
+                    <div style={{ marginTop: 6 }}>
+                      <Tag color="green">已切换到 {msg.actionParams?.db}.{msg.actionParams?.collection}</Tag>
+                    </div>
+                  )}
+                  {msg.action === 'open_schema' && msg.executed && (
+                    <div style={{ marginTop: 6 }}>
+                      <Tag color="blue">已打开字段验证面板</Tag>
+                    </div>
+                  )}
+                  {msg.action === 'open_export' && msg.executed && (
+                    <div style={{ marginTop: 6 }}>
+                      <Tag color="blue">已打开导出面板</Tag>
                     </div>
                   )}
                 </div>
