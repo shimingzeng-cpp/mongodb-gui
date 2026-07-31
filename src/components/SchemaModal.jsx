@@ -40,6 +40,29 @@ const SCHEMA_TO_DISPLAY = {
   javascript: 'code',
 };
 
+// 从文档数据推断字段类型
+function inferFieldType(docs, field) {
+  const types = new Set();
+  for (const doc of docs) {
+    const val = doc[field];
+    if (val === null || val === undefined) continue;
+    if (typeof val === 'number') {
+      types.add(Number.isInteger(val) ? 'int32' : 'double');
+      break;
+    }
+    if (typeof val === 'boolean') { types.add('bool'); break; }
+    if (typeof val === 'string') {
+      if (/^[a-f\d]{24}$/i.test(val)) { types.add('objectId'); break; }
+      if (!isNaN(Date.parse(val))) { types.add('date'); break; }
+      types.add('string'); break;
+    }
+    if (Array.isArray(val)) { types.add('array'); break; }
+    if (typeof val === 'object') { types.add('object'); break; }
+  }
+  if (types.size === 0) return 'string';
+  return Array.from(types)[0];
+}
+
 export default function SchemaModal() {
   const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId, documents } = useStore();
   const t = useTheme();
@@ -88,7 +111,7 @@ export default function SchemaModal() {
       if (result.validator && result.validator.$jsonSchema && result.validator.$jsonSchema.properties) {
         Object.keys(result.validator.$jsonSchema.properties).forEach(name => {
           if (!seen.has(name)) {
-            mergedProps.push({ name, type: schemaProps[name] || 'string' });
+            mergedProps.push({ name, type: schemaProps[name] || inferFieldType(documents, name) || 'string' });
             seen.add(name);
           }
         });
@@ -97,7 +120,7 @@ export default function SchemaModal() {
       // 再处理文档中有但 Schema 中没有的字段
       docFieldNames.forEach(name => {
         if (!seen.has(name)) {
-          mergedProps.push({ name, type: schemaProps[name] || 'string' });
+          mergedProps.push({ name, type: schemaProps[name] || inferFieldType(documents, name) || 'string' });
           seen.add(name);
         }
       });
