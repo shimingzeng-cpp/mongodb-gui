@@ -15,6 +15,35 @@ export default function ChatPanel() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
 
+  // 聊天历史持久化 key
+  const chatStorageKey = activeConnectionId ? `chat_history_${activeConnectionId}` : null;
+
+  // 加载历史消息
+  useEffect(() => {
+    if (chatStorageKey) {
+      try {
+        const saved = localStorage.getItem(chatStorageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+          }
+        }
+      } catch {}
+    }
+  }, [chatStorageKey]);
+
+  // 消息变化时自动保存
+  useEffect(() => {
+    if (chatStorageKey && messages.length > 0) {
+      try {
+        localStorage.setItem(chatStorageKey, JSON.stringify(messages.slice(-100)));
+      } catch {
+        // localStorage 满时忽略
+      }
+    }
+  }, [messages, chatStorageKey]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -62,6 +91,7 @@ export default function ChatPanel() {
         selectedCollection,
         totalDocs,
         schemaFields,
+        memorySummary: buildMemorySummary(),
       });
 
       const reply = await chatCompletion(
@@ -70,7 +100,7 @@ export default function ChatPanel() {
         aiConfig.model,
         [
           { role: 'system', content: systemPrompt },
-          ...messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
+          ...messages.slice(-20).map(m => ({ role: m.role, content: m.content })),
           { role: 'user', content: text },
         ]
       );
@@ -187,7 +217,26 @@ export default function ChatPanel() {
     }
   };
 
-  const clearChat = () => setMessages([]);
+  const clearChat = () => {
+    setMessages([]);
+    if (chatStorageKey) {
+      try { localStorage.removeItem(chatStorageKey); } catch {}
+    }
+    message.success('聊天历史已清除');
+  };
+
+  // 构建记忆摘要：从历史消息中提取关键操作记录
+  const buildMemorySummary = () => {
+    const actions = messages.filter(m => m.role === 'assistant' && m.executed && (m.commands?.length || m.action));
+    if (actions.length === 0) return '';
+    const recent = actions.slice(-10);
+    const lines = recent.map(m => {
+      const cmds = m.commands?.join('; ') || '';
+      const act = m.action || '';
+      return `[${new Date(m.time).toLocaleTimeString()}] ${act ? `操作:${act}` : ''} ${cmds ? `命令:${cmds}` : ''}`;
+    });
+    return `\n## 本次会话历史记录（最近操作）\n${lines.join('\n')}\n`;
+  };
 
   const renderExecResult = (result, idx) => {
     if (!result) return null;
@@ -233,7 +282,7 @@ export default function ChatPanel() {
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', color: t.text.muted, padding: 40, fontSize: 13 }}>
             <RobotOutlined style={{ fontSize: 32, marginBottom: 12 }} />
-            <div>AI Agent 已就绪，可以直接操作数据库和 UI</div>
+            <div>AI Agent 已就绪，我会记住之前的对话</div>
             <div style={{ marginTop: 8, fontSize: 12 }}>
               试试对我说：<br />
               "查询所有玩家"<br />

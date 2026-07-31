@@ -47,7 +47,7 @@ async function chatCompletion(apiUrl, apiKey, model, messages) {
 }
 
 function buildSystemPrompt(context) {
-  const { dbName, collections, fieldNames, sampleDocs, selectedCollection, totalDocs, schemaFields } = context;
+  const { dbName, collections, fieldNames, sampleDocs, selectedCollection, totalDocs, schemaFields, memorySummary } = context;
 
   let prompt = `你是 MongoDB 可视化工具的内置 AI Agent，有直接操作数据库和 UI 的动手能力。
 
@@ -68,6 +68,10 @@ function buildSystemPrompt(context) {
 
   if (sampleDocs.length > 0) {
     prompt += `- 示例数据前 3 条：${JSON.stringify(sampleDocs.slice(0, 3))}\n`;
+  }
+
+  if (memorySummary) {
+    prompt += memorySummary + '\n';
   }
 
   prompt += `
