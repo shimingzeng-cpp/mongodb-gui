@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, message, Spin, Typography, Modal, Input, Dropdown, Space } from 'antd';
 import { DatabaseOutlined, TableOutlined, PlusOutlined, RightOutlined, DownOutlined, DeleteOutlined, ReloadOutlined, CloseOutlined } from '@ant-design/icons';
 import useStore from '../store';
@@ -17,7 +17,6 @@ export default function DbTree() {
   const [createModal, setCreateModal] = useState({ open: false, dbName: null, isNewDb: false });
   const [newName, setNewName] = useState('');
   const [newDbName, setNewDbName] = useState('');
-  const clickTimer = useRef(null);
 
   const handleRefresh = async () => {
     try {
@@ -55,34 +54,35 @@ export default function DbTree() {
     setSelectedCollection(null);
   };
 
-  // 单击/双击分发
+  // 单击：即时展开/折叠
+  // 双击：选中数据库，同时确保展开
   const handleDbClick = (dbName) => {
-    if (clickTimer.current) {
-      clearTimeout(clickTimer.current);
-      clickTimer.current = null;
-      openDb(dbName);
-      return;
-    }
-    clickTimer.current = setTimeout(() => {
-      clickTimer.current = null;
-      toggleDb(dbName);
-    }, 250);
+    toggleDb(dbName);
   };
 
-  const handleColClick = (dbName, colName) => {
-    if (clickTimer.current) {
-      clearTimeout(clickTimer.current);
-      clickTimer.current = null;
-      selectCollection(dbName, colName);
-      return;
-    }
-    clickTimer.current = setTimeout(() => {
-      clickTimer.current = null;
-      // 单击只展开数据库（不选中集合）
-      if (!expandedDbs[dbName]) {
-        toggleDb(dbName);
+  const handleDbDoubleClick = (dbName) => {
+    // 双击时先确保展开（单击可能已经折叠了）
+    if (!expandedDbs[dbName]) {
+      setExpandedDbs(prev => ({ ...prev, [dbName]: true }));
+      if (!collections[dbName]) {
+        window.__mongo.listCollections(activeConnectionId, dbName)
+          .then(cols => setCollections(prev => ({ ...prev, [dbName]: cols })))
+          .catch(() => {});
       }
-    }, 250);
+    }
+    openDb(dbName);
+  };
+
+  // 单击集合：展开父级数据库
+  // 双击集合：选中
+  const handleColClick = (dbName, colName) => {
+    if (!expandedDbs[dbName]) {
+      toggleDb(dbName);
+    }
+  };
+
+  const handleColDoubleClick = (dbName, colName) => {
+    selectCollection(dbName, colName);
   };
 
   const selectCollection = (dbName, colName) => {
@@ -168,6 +168,7 @@ export default function DbTree() {
           >
             <div
               onClick={() => handleDbClick(db.name)}
+              onDoubleClick={() => handleDbDoubleClick(db.name)}
               onMouseEnter={() => setHoveredDb(db.name)}
               onMouseLeave={() => setHoveredDb(null)}
               style={{
@@ -238,6 +239,7 @@ export default function DbTree() {
                   >
                     <div
                       onClick={(e) => { e.stopPropagation(); handleColClick(db.name, col.name); }}
+                      onDoubleClick={(e) => { e.stopPropagation(); handleColDoubleClick(db.name, col.name); }}
                       onMouseEnter={() => setHoveredCol(col.name + db.name)}
                       onMouseLeave={() => setHoveredCol(null)}
                       style={{
