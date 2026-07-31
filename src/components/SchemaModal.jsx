@@ -8,14 +8,14 @@ const { Text, Title } = Typography;
 
 const BSON_TYPES = [
   { label: 'Array', value: 'array' },
-  { label: 'Binary', value: 'binary' },
+  { label: 'Binary', value: 'binData' },
   { label: 'Boolean', value: 'bool' },
-  { label: 'Code', value: 'code' },
+  { label: 'Code', value: 'javascript' },
   { label: 'Date', value: 'date' },
   { label: 'Decimal128', value: 'decimal' },
   { label: 'Double', value: 'double' },
-  { label: 'Int32', value: 'int32' },
-  { label: 'Int64', value: 'int64' },
+  { label: 'Int32', value: 'int' },
+  { label: 'Int64', value: 'long' },
   { label: 'MaxKey', value: 'maxKey' },
   { label: 'MinKey', value: 'minKey' },
   { label: 'Null', value: 'null' },
@@ -31,6 +31,14 @@ const BSON_TYPES = [
   { label: 'LegacyCSharpUUID', value: 'uuidLegacyCSharp' },
   { label: 'LegacyPythonUUID', value: 'uuidLegacyPython' },
 ];
+
+// 从 MongoDB $jsonSchema 类型映射回显示类型
+const SCHEMA_TO_DISPLAY = {
+  int: 'int32',
+  long: 'int64',
+  binData: 'binary',
+  javascript: 'code',
+};
 
 export default function SchemaModal() {
   const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId, documents } = useStore();
@@ -67,7 +75,7 @@ export default function SchemaModal() {
         req = s.required || [];
         if (s.properties) {
           Object.entries(s.properties).forEach(([name, def]) => {
-            schemaProps[name] = def.bsonType || 'string';
+            schemaProps[name] = SCHEMA_TO_DISPLAY[def.bsonType] || def.bsonType || 'string';
           });
         }
       }
