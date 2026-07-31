@@ -105,27 +105,21 @@ export default function ChatPanel() {
       selectedCollection, totalDocs, schemaFields, memorySummary: buildMemorySummary(),
     });
 
-    // 构建消息历史：system + 最近对话历史
-    const buildHistory = (extraContent) => {
-      const msgs = [];
-      // 获取当前最新的 messages 状态
-      const currentMsgs = useStore.getState().messages;
-      // 用 React 状态就不对了，直接用 messages 状态
-      return [
-        { role: 'system', content: systemPrompt },
-        ...(extraContent ? [{ role: 'user', content: extraContent }] : []),
-      ];
-    };
+    // 构建消息历史
+    const buildHistory = (extraContent) => [
+      { role: 'system', content: systemPrompt },
+      ...(extraContent ? [{ role: 'user', content: extraContent }] : []),
+    ];
 
     let round = 0;
-    let lastInput = userInput;  // 每次发给 AI 的内容
+    let lastInput = userInput;
 
     // 创建主消息
     const mainMsg = {
       role: 'assistant', content: '正在思考...',
       commands: [], action: '', actionParams: {},
       time: Date.now(), executed: false, execResults: [], round: 0, totalRounds: '?',
-      steps: [], // 子步骤
+      steps: [],
     };
     setMessages(prev => [...prev, mainMsg]);
 
@@ -153,7 +147,9 @@ export default function ChatPanel() {
         parsed = { reply, commands: [], action: '', done: true };
       }
 
-      const commands = parsed.commands || (parsed.command ? [parsed.command] : []);
+      // 确保 commands 是数组（兼容旧格式和异常值）
+      const rawCommands = parsed.commands || (parsed.command ? [parsed.command] : []);
+      const commands = Array.isArray(rawCommands) ? rawCommands : [];
       const actionParams = parsed.actionParams || {};
       const done = parsed.done !== false;
 
@@ -163,7 +159,7 @@ export default function ChatPanel() {
       // 执行命令
       const execResults = [];
       for (const cmd of commands) {
-        if (cmd.trim()) {
+        if (cmd && typeof cmd === 'string' && cmd.trim()) {
           const result = await window.__mongo.executeShell(activeConnectionId, selectedDb, cmd);
           execResults.push(result);
           // 刷新 UI
