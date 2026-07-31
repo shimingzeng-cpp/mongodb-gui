@@ -251,7 +251,7 @@ function ShellTab() {
     // 数组且包含对象 → 表格展示
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
       const keys = new Set();
-      data.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') keys.add(k); }));
+      data.forEach(doc => Object.keys(doc).forEach(k => {  keys.add(k); }));
       const cols = Array.from(keys).map(key => ({
         title: key, dataIndex: key, key,
         width: 160, ellipsis: true,
@@ -307,7 +307,7 @@ function ShellTab() {
     if (data === undefined || data === null) return <Text type="success">✅ 执行成功</Text>;
     if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
       const keys = new Set();
-      data.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') keys.add(k); }));
+      data.forEach(doc => Object.keys(doc).forEach(k => {  keys.add(k); }));
       const cols = Array.from(keys).map(key => ({
         title: key, dataIndex: key, key,
         width: 160, ellipsis: true,

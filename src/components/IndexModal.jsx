@@ -19,7 +19,7 @@ export default function IndexModal() {
   // 从文档中提取字段名
   const fieldNames = React.useMemo(() => {
     const names = new Set();
-    documents.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') names.add(k); }));
+    documents.forEach(doc => Object.keys(doc).forEach(k => names.add(k)));
     return Array.from(names).map(n => ({ label: n, value: n }));
   }, [documents]);
 

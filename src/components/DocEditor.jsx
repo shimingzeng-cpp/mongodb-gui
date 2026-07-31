@@ -76,7 +76,7 @@ export default function DocEditor() {
   // 从已有文档和 Schema 定义中提取字段名
   const fieldNames = React.useMemo(() => {
     const names = new Set();
-    documents.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') names.add(k); }));
+    documents.forEach(doc => Object.keys(doc).forEach(k => names.add(k)));
     schemaFields.forEach(f => { if (f) names.add(f); });
     return Array.from(names).map(n => ({ label: n, value: n }));
   }, [documents, schemaFields]);
@@ -89,7 +89,7 @@ export default function DocEditor() {
           .then(schema => {
             if (schema.validator && schema.validator.$jsonSchema) {
               const props = schema.validator.$jsonSchema.properties || {};
-              const names = Object.keys(props).filter(k => k !== '_id');
+              const names = Object.keys(props);
               setSchemaFields(names);
             }
           })
@@ -97,7 +97,6 @@ export default function DocEditor() {
       }
 
       const list = Object.entries(editingDoc)
-        .filter(([key]) => key !== '_id')
         .map(([key, value]) => ({
         key,
         type: inferType(value),

@@ -119,7 +119,7 @@ export default function DocTable() {
   useEffect(() => {
     if (documents.length === 0) { setColumns([]); return; }
     const keys = new Set();
-    documents.forEach(doc => Object.keys(doc).forEach(k => { if (k !== '_id') keys.add(k); }));
+    documents.forEach(doc => Object.keys(doc).forEach(k => {  keys.add(k); }));
     setColumns(Array.from(keys).map(key => ({
       title: <span>{key} <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0 }}>{inferFieldType(documents, key)}</Tag></span>, dataIndex: key, key,
       width: 160, ellipsis: true,

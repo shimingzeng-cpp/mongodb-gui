@@ -123,7 +123,7 @@ export default function ChatPanel() {
       try {
         const schema = await window.__mongo.getCollectionSchema(safeActiveId, safeSelectedDb, selectedCollection);
         if (schema && schema.validator && schema.validator.$jsonSchema) {
-          schemaFields = Object.keys(schema.validator.$jsonSchema.properties || {}).filter(k => k !== '_id');
+          schemaFields = Object.keys(schema.validator.$jsonSchema.properties || {});
         }
       } catch {}
     }
