@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button, message, Spin, Typography, Modal, Input, Dropdown, Space } from 'antd';
 import { DatabaseOutlined, TableOutlined, PlusOutlined, RightOutlined, DownOutlined, DeleteOutlined, ReloadOutlined, CloseOutlined } from '@ant-design/icons';
 import useStore from '../store';
@@ -17,6 +17,7 @@ export default function DbTree() {
   const [createModal, setCreateModal] = useState({ open: false, dbName: null, isNewDb: false });
   const [newName, setNewName] = useState('');
   const [newDbName, setNewDbName] = useState('');
+  const clickTimer = useRef(null);
 
   const handleRefresh = async () => {
     try {
@@ -38,8 +39,6 @@ export default function DbTree() {
       return;
     }
     setExpandedDbs(prev => ({ ...prev, [dbName]: true }));
-    setSelectedDb(dbName);
-    setSelectedCollection(null);
     if (!collections[dbName]) {
       setLoading(prev => ({ ...prev, [dbName]: true }));
       try {
@@ -48,6 +47,42 @@ export default function DbTree() {
       } catch (err) { message.error('加载集合失败: ' + err.message); }
       setLoading(prev => ({ ...prev, [dbName]: false }));
     }
+  };
+
+  // 双击打开数据库（选中并更新 Shell 上下文）
+  const openDb = (dbName) => {
+    setSelectedDb(dbName);
+    setSelectedCollection(null);
+  };
+
+  // 单击/双击分发
+  const handleDbClick = (dbName) => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      openDb(dbName);
+      return;
+    }
+    clickTimer.current = setTimeout(() => {
+      clickTimer.current = null;
+      toggleDb(dbName);
+    }, 250);
+  };
+
+  const handleColClick = (dbName, colName) => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      selectCollection(dbName, colName);
+      return;
+    }
+    clickTimer.current = setTimeout(() => {
+      clickTimer.current = null;
+      // 单击只展开数据库（不选中集合）
+      if (!expandedDbs[dbName]) {
+        toggleDb(dbName);
+      }
+    }, 250);
   };
 
   const selectCollection = (dbName, colName) => {
@@ -132,7 +167,7 @@ export default function DbTree() {
             trigger={['contextMenu']}
           >
             <div
-              onClick={() => toggleDb(db.name)}
+              onClick={() => handleDbClick(db.name)}
               onMouseEnter={() => setHoveredDb(db.name)}
               onMouseLeave={() => setHoveredDb(null)}
               style={{
@@ -202,7 +237,7 @@ export default function DbTree() {
                     trigger={['contextMenu']}
                   >
                     <div
-                      onClick={(e) => { e.stopPropagation(); selectCollection(db.name, col.name); }}
+                      onClick={(e) => { e.stopPropagation(); handleColClick(db.name, col.name); }}
                       onMouseEnter={() => setHoveredCol(col.name + db.name)}
                       onMouseLeave={() => setHoveredCol(null)}
                       style={{
