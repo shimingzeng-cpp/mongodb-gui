@@ -40,31 +40,31 @@ const SCHEMA_TO_DISPLAY = {
   javascript: 'code',
 };
 
-// 从文档数据推断字段类型
-function inferFieldType(docs, field) {
-  const types = new Set();
-  for (const doc of docs) {
-    const val = doc[field];
-    if (val === null || val === undefined) continue;
-    if (typeof val === 'number') {
-      types.add(Number.isInteger(val) ? 'int32' : 'double');
-      break;
-    }
-    if (typeof val === 'boolean') { types.add('bool'); break; }
-    if (typeof val === 'string') {
-      if (/^[a-f\d]{24}$/i.test(val)) { types.add('objectId'); break; }
-      if (!isNaN(Date.parse(val))) { types.add('date'); break; }
-      types.add('string'); break;
-    }
-    if (Array.isArray(val)) { types.add('array'); break; }
-    if (typeof val === 'object') { types.add('object'); break; }
-  }
-  if (types.size === 0) return 'string';
-  return Array.from(types)[0];
-}
+// MongoDB $type → 显示类型
+const BSON_TYPE_TO_DISPLAY = {
+  double: 'double',
+  string: 'string',
+  object: 'object',
+  array: 'array',
+  binData: 'binary',
+  undefined: 'undefined',
+  objectId: 'objectId',
+  bool: 'bool',
+  date: 'date',
+  null: 'null',
+  regex: 'regex',
+  javascript: 'code',
+  symbol: 'symbol',
+  int: 'int32',
+  timestamp: 'timestamp',
+  long: 'int64',
+  decimal: 'decimal',
+  minKey: 'minKey',
+  maxKey: 'maxKey',
+};
 
 export default function SchemaModal() {
-  const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId, documents } = useStore();
+  const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId } = useStore();
   const t = useTheme();
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -83,12 +83,15 @@ export default function SchemaModal() {
   const loadSchema = async () => {
     setLoading(true);
     try {
-      const result = await window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection);
+      // 并行获取 Schema 定义和 MongoDB 实际字段类型
+      const [result, fieldTypes] = await Promise.all([
+        window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection),
+        window.__mongo.getCollectionFieldTypes(activeConnectionId, selectedDb, selectedCollection).catch(() => ({})),
+      ]);
       setSchema(result);
 
-      // 1. 从文档中提取所有字段名
-      const docFieldNames = new Set();
-      (documents || []).forEach(doc => Object.keys(doc).forEach(k => docFieldNames.add(k)));
+      // 1. 从 MongoDB 获取所有字段的实际类型
+      const docFieldNames = new Set(Object.keys(fieldTypes));
 
       // 2. 从 Schema 中提取字段定义
       const schemaProps = {};
@@ -103,24 +106,24 @@ export default function SchemaModal() {
         }
       }
 
-      // 3. 合并：文档字段 + Schema 字段，Schema 类型优先
+      // 3. 合并：Schema 字段优先，MongoDB 实际类型补充
       const mergedProps = [];
       const seen = new Set();
 
-      // 先处理 Schema 中定义的字段（保持顺序）
+      // 先处理 Schema 中已定义的字段
       if (result.validator && result.validator.$jsonSchema && result.validator.$jsonSchema.properties) {
         Object.keys(result.validator.$jsonSchema.properties).forEach(name => {
           if (!seen.has(name)) {
-            mergedProps.push({ name, type: schemaProps[name] || inferFieldType(documents, name) || 'string' });
+            mergedProps.push({ name, type: schemaProps[name] || 'string' });
             seen.add(name);
           }
         });
       }
 
-      // 再处理文档中有但 Schema 中没有的字段
+      // 再处理 MongoDB 实际存在但 Schema 未定义的字段
       docFieldNames.forEach(name => {
         if (!seen.has(name)) {
-          mergedProps.push({ name, type: schemaProps[name] || inferFieldType(documents, name) || 'string' });
+          mergedProps.push({ name, type: BSON_TYPE_TO_DISPLAY[fieldTypes[name]] || 'string' });
           seen.add(name);
         }
       });
