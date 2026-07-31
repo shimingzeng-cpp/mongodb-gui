@@ -142,9 +142,9 @@ export default function ChatPanel() {
 
     // 创建主消息
     const mainMsg = {
-      role: 'assistant', content: '正在思考...',
+      role: 'assistant', content: '',
       commands: [], action: '', actionParams: {},
-      time: Date.now(), executed: false, execResults: [], round: 0, totalRounds: '?',
+      time: Date.now(), executed: false, execResults: [], round: 0, totalRounds: '',
       steps: [],
     };
     setMessages(prev => [...prev, mainMsg]);
@@ -431,13 +431,18 @@ export default function ChatPanel() {
                   opacity: msg.isSubStep ? 0.9 : 1,
                 }}>
                   <div style={{ fontSize: 12, color: t.text.subtle, marginBottom: 4 }}>
-                    {msg.round && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
+                    {msg.round > 0 && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
                       {msg.totalRounds}
                     </Tag>}
+                    {!msg.content && !msg.executed && (
+                      <Text style={{ fontSize: 12, color: t.text.subtle }}>⏳ 思考中...</Text>
+                    )}
                   </div>
-                  <Text style={{ color: msg.isError ? t.error : msg.isWarning ? t.warning : t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>
-                    {msg.content}
-                  </Text>
+                  {msg.content && (
+                    <Text style={{ color: msg.isError ? t.error : msg.isWarning ? t.warning : t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                      {msg.content}
+                    </Text>
+                  )}
                   {msg.commands && msg.commands.length > 0 && (
                     <div style={{ marginTop: 6 }}>
                       {msg.commands.map((cmd, i) => (
