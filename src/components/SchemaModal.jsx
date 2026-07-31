@@ -56,7 +56,10 @@ export default function SchemaModal() {
       setSchema(result);
       if (result.validator && result.validator.$jsonSchema) {
         const s = result.validator.$jsonSchema;
-        setRequiredFields(s.required || []);
+        const req = s.required || [];
+        // 确保 _id 必填
+        if (!req.includes('_id')) req.unshift('_id');
+        setRequiredFields(req);
         const props = s.properties ? Object.entries(s.properties).map(([name, def]) => ({
           name, type: def.bsonType || 'string', ...def,
         })) : [];
@@ -67,7 +70,7 @@ export default function SchemaModal() {
         setProperties(props);
         setJsonText(JSON.stringify(result.validator, null, 2));
       } else {
-        setRequiredFields([]);
+        setRequiredFields(['_id']);
         setProperties([{ name: '_id', type: 'objectId' }]);
         setJsonText('');
       }
@@ -114,7 +117,8 @@ export default function SchemaModal() {
   const addProperty = () => setProperties([...properties, { name: '', type: 'string' }]);
   const removeProperty = (i) => {
     const p = properties[i];
-    if (p && p.name && requiredFields.includes(p.name)) {
+    if (!p || p.name === '_id') return;
+    if (p.name && requiredFields.includes(p.name)) {
       setRequiredFields(requiredFields.filter(f => f !== p.name));
     }
     setProperties(properties.filter((_, idx) => idx !== i));
@@ -122,6 +126,8 @@ export default function SchemaModal() {
   const updateProperty = (i, field, val) => {
     const u = [...properties];
     const oldName = u[i].name;
+    // _id 不允许改字段名
+    if (oldName === '_id' && field === 'name') return;
     u[i] = { ...u[i], [field]: val };
     // 如果字段名变了，同步更新 required 列表
     if (field === 'name' && oldName && requiredFields.includes(oldName)) {
@@ -130,6 +136,7 @@ export default function SchemaModal() {
     setProperties(u);
   };
   const toggleRequired = (fieldName, checked) => {
+    if (fieldName === '_id') return; // _id 始终必填
     if (checked) {
       if (!requiredFields.includes(fieldName)) {
         setRequiredFields([...requiredFields, fieldName]);
@@ -167,15 +174,18 @@ export default function SchemaModal() {
                   placeholder="输入字段名"
                   size="small"
                   style={{ width: 160 }}
+                  disabled={p.name === '_id'}
                 />
                 <Select value={p.type} onChange={v => updateProperty(i, 'type', v)} size="small" style={{ width: 100 }} options={BSON_TYPES} />
                 <Checkbox
                   checked={p.name ? requiredFields.includes(p.name) : false}
                   onChange={e => { if (p.name) toggleRequired(p.name, e.target.checked); }}
-                  disabled={!p.name}
+                  disabled={!p.name || p.name === '_id'}
                   title="勾选表示必填（非空）"
                 >必填</Checkbox>
-                <Button icon={<DeleteOutlined />} size="small" danger type="text" onClick={() => removeProperty(i)} />
+                {p.name !== '_id' && (
+                  <Button icon={<DeleteOutlined />} size="small" danger type="text" onClick={() => removeProperty(i)} />
+                )}
               </div>
             ))}
             <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addProperty} style={{ marginTop: 4 }}>添加字段</Button>
