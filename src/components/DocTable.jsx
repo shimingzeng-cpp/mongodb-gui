@@ -89,6 +89,36 @@ export default function DocTable() {
   const [editValue, setEditValue] = useState('');
   const editingCellRef = useRef(null);
   const editValueRef = useRef('');
+  const [schemaTypes, setSchemaTypes] = useState({}); // 字段名 → 显示类型
+
+  // Schema 类型映射（$jsonSchema → 显示类型）
+  const SCHEMA_TO_DISPLAY = {
+    int: 'int32',
+    long: 'int64',
+    binData: 'binary',
+    javascript: 'code',
+  };
+
+  // 加载 Schema 字段类型
+  useEffect(() => {
+    if (selectedDb && selectedCollection) {
+      window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection)
+        .then(schema => {
+          if (schema.validator && schema.validator.$jsonSchema && schema.validator.$jsonSchema.properties) {
+            const types = {};
+            Object.entries(schema.validator.$jsonSchema.properties).forEach(([name, def]) => {
+              types[name] = SCHEMA_TO_DISPLAY[def.bsonType] || def.bsonType || 'string';
+            });
+            setSchemaTypes(types);
+          } else {
+            setSchemaTypes({});
+          }
+        })
+        .catch(() => setSchemaTypes({}));
+    } else {
+      setSchemaTypes({});
+    }
+  }, [selectedDb, selectedCollection, reloadKey]);
 
   // 生成 MongoDB Shell 命令
   const buildShellCommand = (filterObj, isAdvanced) => {
@@ -121,7 +151,7 @@ export default function DocTable() {
     const keys = new Set();
     documents.forEach(doc => Object.keys(doc).forEach(k => {  keys.add(k); }));
     setColumns(Array.from(keys).map(key => ({
-      title: <span>{key} <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0 }}>{inferFieldType(documents, key)}</Tag></span>, dataIndex: key, key,
+      title: <span>{key} <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0 }}>{schemaTypes[key] || inferFieldType(documents, key)}</Tag></span>, dataIndex: key, key,
       width: 160, ellipsis: true,
       sorter: (a, b) => {
         const va = a[key], vb = b[key];
