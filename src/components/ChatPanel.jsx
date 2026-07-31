@@ -37,7 +37,7 @@ export default function ChatPanel() {
   useEffect(() => {
     if (chatStorageKey && messages.length > 0) {
       try {
-        localStorage.setItem(chatStorageKey, JSON.stringify(messages.slice(-100)));
+        localStorage.setItem(chatStorageKey, JSON.stringify(messages.slice(-MAX_STORAGE_MSGS)));
       } catch {
         // localStorage 满时忽略
       }
@@ -79,6 +79,8 @@ export default function ChatPanel() {
   const [interrupt, setInterrupt] = useState(false);
   const [agentRound, setAgentRound] = useState(0);
   const MAX_ROUNDS = 10;
+  const MAX_STORAGE_MSGS = 200;    // localStorage 最多保存
+  const MAX_CONTEXT_MSGS = 30;      // 发送给 AI 的上下文上限
 
   const agentLoop = async (userInput) => {
     try {
@@ -131,11 +133,46 @@ export default function ChatPanel() {
       selectedCollection, totalDocs: totalDocs || 0, schemaFields, memorySummary: buildMemorySummary(),
     });
 
-    // 构建消息历史
-    const buildHistory = (extraContent) => [
-      { role: 'system', content: systemPrompt },
-      ...(extraContent ? [{ role: 'user', content: extraContent }] : []),
-    ];
+    // 构建消息历史（含上下文压缩）
+    const buildHistory = (extraContent) => {
+      // 获取当前消息列表
+      let history = [];
+      try {
+        // 从 React 状态中获取最新消息
+        const currentMsgs = messages;
+        if (Array.isArray(currentMsgs) && currentMsgs.length > 1) {
+          // 过滤掉空的 AI 消息和系统消息
+          const validMsgs = currentMsgs.filter(m =>
+            m && m.role && (m.content || m.role === 'user')
+          );
+
+          if (validMsgs.length > MAX_CONTEXT_MSGS) {
+            // 上下文压缩：保留最近的 MAX_CONTEXT_MSGS 条
+            // 把最早的消息压缩成一条摘要
+            const headCount = validMsgs.length - MAX_CONTEXT_MSGS;
+            const headMsgs = validMsgs.slice(0, headCount);
+            const tailMsgs = validMsgs.slice(headCount);
+
+            // 统计之前的对话轮次
+            const userCount = headMsgs.filter(m => m.role === 'user').length;
+            const summary = `[历史对话摘要：此前共 ${userCount} 轮对话，涉及 ${headMsgs.filter(m => m.commands?.length).length} 次数据库操作]`;
+
+            history = [
+              { role: 'user', content: summary },
+              ...tailMsgs.map(m => ({ role: m.role, content: m.content || '(执行中...)' })),
+            ];
+          } else {
+            history = validMsgs.map(m => ({ role: m.role, content: m.content || '(执行中...)' }));
+          }
+        }
+      } catch {}
+
+      return [
+        { role: 'system', content: systemPrompt },
+        ...history,
+        ...(extraContent ? [{ role: 'user', content: extraContent }] : []),
+      ];
+    };
 
     let round = 0;
     let lastInput = userInput;
