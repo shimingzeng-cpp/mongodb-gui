@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Input, Select, Space, Typography, message, Tag, Popconfirm } from 'antd';
+import { Modal, Button, Input, Select, Space, Typography, message, Tag, Popconfirm, Checkbox } from 'antd';
 import { PlusOutlined, DeleteOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
@@ -112,11 +112,31 @@ export default function SchemaModal() {
   };
 
   const addProperty = () => setProperties([...properties, { name: '', type: 'string' }]);
-  const removeProperty = (i) => setProperties(properties.filter((_, idx) => idx !== i));
+  const removeProperty = (i) => {
+    const p = properties[i];
+    if (p && p.name && requiredFields.includes(p.name)) {
+      setRequiredFields(requiredFields.filter(f => f !== p.name));
+    }
+    setProperties(properties.filter((_, idx) => idx !== i));
+  };
   const updateProperty = (i, field, val) => {
     const u = [...properties];
+    const oldName = u[i].name;
     u[i] = { ...u[i], [field]: val };
+    // 如果字段名变了，同步更新 required 列表
+    if (field === 'name' && oldName && requiredFields.includes(oldName)) {
+      setRequiredFields(requiredFields.map(f => f === oldName ? val : f));
+    }
     setProperties(u);
+  };
+  const toggleRequired = (fieldName, checked) => {
+    if (checked) {
+      if (!requiredFields.includes(fieldName)) {
+        setRequiredFields([...requiredFields, fieldName]);
+      }
+    } else {
+      setRequiredFields(requiredFields.filter(f => f !== fieldName));
+    }
   };
   const addRequired = () => setRequiredFields([...requiredFields, '']);
   const removeRequired = (i) => setRequiredFields(requiredFields.filter((_, idx) => idx !== i));
@@ -146,6 +166,7 @@ export default function SchemaModal() {
           {/* Required 字段 */}
           <div style={{ marginBottom: 16 }}>
             <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>必填字段 (required)</Text>
+            <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>也可在下方字段定义中勾选"必填"</Text>
             {requiredFields.map((f, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <Input
@@ -174,6 +195,12 @@ export default function SchemaModal() {
                   style={{ width: 160 }}
                 />
                 <Select value={p.type} onChange={v => updateProperty(i, 'type', v)} size="small" style={{ width: 100 }} options={BSON_TYPES} />
+                <Checkbox
+                  checked={p.name ? requiredFields.includes(p.name) : false}
+                  onChange={e => { if (p.name) toggleRequired(p.name, e.target.checked); }}
+                  disabled={!p.name}
+                  title="勾选表示必填（非空）"
+                >必填</Checkbox>
                 <Button icon={<DeleteOutlined />} size="small" danger type="text" onClick={() => removeProperty(i)} />
               </div>
             ))}
