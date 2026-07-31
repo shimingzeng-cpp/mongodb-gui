@@ -32,35 +32,14 @@ const BSON_TYPES = [
   { label: 'LegacyPythonUUID', value: 'uuidLegacyPython' },
 ];
 
-// 从 MongoDB $jsonSchema 类型映射回显示类型
-const SCHEMA_TO_DISPLAY = {
-  int: 'int32',
-  long: 'int64',
-  binData: 'binary',
-  javascript: 'code',
-};
-
 // MongoDB $type → 显示类型
 const BSON_TYPE_TO_DISPLAY = {
-  double: 'double',
-  string: 'string',
-  object: 'object',
-  array: 'array',
-  binData: 'binary',
-  undefined: 'undefined',
-  objectId: 'objectId',
-  bool: 'bool',
-  date: 'date',
-  null: 'null',
-  regex: 'regex',
-  javascript: 'code',
-  symbol: 'symbol',
-  int: 'int32',
-  timestamp: 'timestamp',
-  long: 'int64',
-  decimal: 'decimal',
-  minKey: 'minKey',
-  maxKey: 'maxKey',
+  double: 'double', string: 'string', object: 'object', array: 'array',
+  binData: 'binData', undefined: 'undefined', objectId: 'objectId',
+  bool: 'bool', date: 'date', null: 'null', regex: 'regex',
+  javascript: 'javascript', symbol: 'symbol', int: 'int',
+  timestamp: 'timestamp', long: 'long', decimal: 'decimal',
+  minKey: 'minKey', maxKey: 'maxKey',
 };
 
 export default function SchemaModal() {
@@ -101,7 +80,7 @@ export default function SchemaModal() {
         req = s.required || [];
         if (s.properties) {
           Object.entries(s.properties).forEach(([name, def]) => {
-            schemaProps[name] = SCHEMA_TO_DISPLAY[def.bsonType] || def.bsonType || 'string';
+            schemaProps[name] = def.bsonType || 'string';
           });
         }
       }
