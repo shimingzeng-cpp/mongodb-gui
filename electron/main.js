@@ -10,7 +10,7 @@ function createWindow() {
     height: 900,
     minWidth: 1000,
     minHeight: 600,
-    title: '国产开源MongoDB可视化工具',
+    title: 'MongoBuddy',
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,

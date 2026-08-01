@@ -114,7 +114,7 @@ export default function ConnectionBar() {
       ) : (
         <Space>
           <DatabaseOutlined style={{ color: t.accent, fontSize: 16 }} />
-          <Text strong style={{ color: t.text.primary, fontSize: 14 }}>MongoDB 可视化工具</Text>
+          <Text strong style={{ color: t.text.primary, fontSize: 14 }}>MongoBuddy</Text>
         </Space>
       )}
       <Space size="small">

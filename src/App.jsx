@@ -53,7 +53,7 @@ function WelcomeScreen() {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       flex: 1, padding: 40,
     }}>
-      <Title level={3} style={{ color: t.text.secondary, marginBottom: 8 }}>欢迎使用 MongoDB 可视化工具</Title>
+      <Title level={3} style={{ color: t.text.secondary, marginBottom: 8 }}>欢迎使用 MongoBuddy</Title>
       <Text type="secondary" style={{ marginBottom: 32 }}>
         请选择左侧的连接或添加新连接开始使用
       </Text>

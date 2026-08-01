@@ -11,7 +11,7 @@
   },
   "build": {
     "appId": "com.mongodb-gui.app",
-    "productName": "MongoDB GUI",
+    "productName": "MongoBuddy",
     "directories": {
       "output": "release"
     },
