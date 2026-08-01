@@ -120,11 +120,11 @@ export default function DbTree() {
   };
 
   return (
-    <div style={{ padding: '8px 0', height: '100%' }}>
+    <div style={{ padding: '4px 0', height: '100%' }}>
       <div
-        style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        style={{ padding: '4px 16px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
       >
-        <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>数据库</Text>
+        <Text strong style={{ color: t.text.secondary, fontSize: 11, letterSpacing: '0.5px' }}>数据库</Text>
         <Space size={2}>
           <Button type="text" size="small" icon={<ReloadOutlined style={{ fontSize: 12 }} />}
             onClick={handleRefresh} title="刷新数据库列表" style={{ color: t.accent }} />
@@ -175,10 +175,11 @@ export default function DbTree() {
               onMouseEnter={() => setHoveredDb(db.name)}
               onMouseLeave={() => setHoveredDb(null)}
               style={{
-                cursor: 'pointer', padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 8,
+                cursor: 'pointer', padding: '5px 16px', margin: '1px 8px', borderRadius: 6,
+                display: 'flex', alignItems: 'center', gap: 8,
                 background: selectedDb === db.name && !selectedCollection ? t.bg.highlight : (hoveredDb === db.name ? t.bg.hover : 'transparent'),
-                borderLeft: selectedDb === db.name && !selectedCollection ? `3px solid ${t.accent}` : '3px solid transparent',
-                transition: 'all 0.2s',
+                borderLeft: 'none',
+                transition: 'all 0.15s',
               }}
             >
               {expandedDbs[db.name] ? <DownOutlined style={{ fontSize: 10, color: t.text.subtle }} /> : <RightOutlined style={{ fontSize: 10, color: t.text.subtle }} />}
@@ -207,7 +208,7 @@ export default function DbTree() {
           </Dropdown>
 
           {expandedDbs[db.name] && (
-            <div style={{ paddingLeft: 28 }}>
+            <div style={{ paddingLeft: 0 }}>
               {loading[db.name] ? (
                 <div style={{ padding: '8px 16px' }}><Spin size="small" /></div>
               ) : (
@@ -246,10 +247,11 @@ export default function DbTree() {
                       onMouseEnter={() => setHoveredCol(col.name + db.name)}
                       onMouseLeave={() => setHoveredCol(null)}
                       style={{
-                        cursor: 'pointer', padding: '5px 16px', display: 'flex', alignItems: 'center', gap: 8,
+                        cursor: 'pointer', padding: '4px 16px', margin: '1px 16px', borderRadius: 6,
+                        display: 'flex', alignItems: 'center', gap: 8,
                         background: selectedCollection === col.name && selectedDb === db.name ? t.bg.highlight : (hoveredCol === col.name + db.name ? t.bg.hover : 'transparent'),
-                        borderLeft: selectedCollection === col.name && selectedDb === db.name ? `3px solid ${t.info}` : '3px solid transparent',
-                        transition: 'all 0.2s',
+                        borderLeft: 'none',
+                        transition: 'all 0.15s',
                       }}
                     >
                       <TableOutlined style={{ color: t.info }} />

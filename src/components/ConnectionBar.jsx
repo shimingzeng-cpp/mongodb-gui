@@ -103,18 +103,28 @@ export default function ConnectionBar() {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: t.bg.primary, borderBottom: `1px solid ${t.border}` }}>
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '6px 16px', background: t.bg.primary, borderBottom: `1px solid ${t.border}`,
+      height: 48,
+    }}>
       {connected ? (
         <Space>
-          <Tag color="green" style={{ marginRight: 0 }}>已连接 {activeConn?.name}</Tag>
+          <Tag color="green" style={{ marginRight: 0, borderRadius: 4 }}>已连接 {activeConn?.name}</Tag>
           <Button icon={<DownloadOutlined />} onClick={() => setBackupOpen(true)} size="small">备份</Button>
           <Button icon={<SwapOutlined />} onClick={() => setSyncOpen(true)} size="small">同步</Button>
           <Button danger icon={<DisconnectOutlined />} onClick={handleDisconnect} size="small">断开</Button>
         </Space>
       ) : (
         <Space>
-          <DatabaseOutlined style={{ color: t.accent, fontSize: 16 }} />
-          <Text strong style={{ color: t.text.primary, fontSize: 14 }}>MongoBuddy</Text>
+          <div style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: `linear-gradient(135deg, ${t.accent}, ${t.accent}88)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <DatabaseOutlined style={{ color: '#fff', fontSize: 14 }} />
+          </div>
+          <Text strong style={{ color: t.text.primary, fontSize: 15, fontWeight: 600 }}>MongoBuddy</Text>
         </Space>
       )}
       <Space size="small">

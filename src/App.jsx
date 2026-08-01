@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layout, ConfigProvider, theme, App as AntApp, Button, Typography, Card, Space } from 'antd';
-import { PlusOutlined, LinkOutlined, RobotOutlined } from '@ant-design/icons';
+import { PlusOutlined, LinkOutlined, RobotOutlined, DatabaseOutlined } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import ConnectionBar from './components/ConnectionBar';
 import ConnectionList from './components/ConnectionList';
@@ -52,10 +52,19 @@ function WelcomeScreen() {
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       flex: 1, padding: 40,
+      background: `linear-gradient(180deg, ${t.bg.primary} 0%, ${t.bg.sidebar} 100%)`,
     }}>
-      <Title level={3} style={{ color: t.text.secondary, marginBottom: 8 }}>欢迎使用 MongoBuddy</Title>
-      <Text type="secondary" style={{ marginBottom: 32 }}>
-        请选择左侧的连接或添加新连接开始使用
+      <div style={{
+        width: 64, height: 64, borderRadius: 16,
+        background: `linear-gradient(135deg, ${t.accent}, ${t.info})`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 20, boxShadow: `0 8px 24px ${t.accent}33`,
+      }}>
+        <DatabaseOutlined style={{ fontSize: 28, color: '#fff' }} />
+      </div>
+      <Title level={3} style={{ color: t.text.primary, margin: 0, fontWeight: 600 }}>MongoBuddy</Title>
+      <Text style={{ color: t.text.secondary, marginBottom: 32, fontSize: 14 }}>
+        选择连接开始使用
       </Text>
       {connections.length > 0 && (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 600 }}>
@@ -64,19 +73,34 @@ function WelcomeScreen() {
               key={conn.id}
               hoverable
               size="small"
-              style={{ width: 200, background: t.bg.card, border: `1px solid ${t.border}` }}
+              style={{
+                width: 200, background: t.bg.card, border: `1px solid ${t.border}`,
+                borderRadius: 12, transition: 'all 0.2s',
+              }}
+              styles={{ body: { padding: 16 } }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = t.accent}
+              onMouseLeave={e => e.currentTarget.style.borderColor = t.border}
               onClick={() => handleQuickConnect(conn)}
             >
               <div style={{ textAlign: 'center' }}>
                 <div style={{
-                  width: 12, height: 12, borderRadius: '50%', background: t.muted,
-                  margin: '0 auto 8px',
-                }} />
-                <Text style={{ color: t.text.primary, display: 'block' }}>{conn.name}</Text>
-                <Text type="secondary" style={{ fontSize: 11 }}>{conn.host}:{conn.port}</Text>
+                  width: 40, height: 40, borderRadius: 10,
+                  background: `linear-gradient(135deg, ${t.accent}, ${t.accent}88)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 10px',
+                }}>
+                  <DatabaseOutlined style={{ fontSize: 18, color: '#fff' }} />
+                </div>
+                <Text style={{ color: t.text.primary, display: 'block', fontWeight: 500, marginBottom: 2 }}>{conn.name}</Text>
+                <Text style={{ color: t.text.subtle, fontSize: 11 }}>{conn.host}:{conn.port}</Text>
               </div>
             </Card>
           ))}
+        </div>
+      )}
+      {connections.length === 0 && (
+        <div style={{ textAlign: 'center', color: t.text.muted, padding: 20 }}>
+          <Text style={{ color: t.text.subtle }}>还没有连接，请点击左侧 + 添加连接</Text>
         </div>
       )}
     </div>
@@ -97,7 +121,50 @@ export default function App() {
         algorithm: appTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: '#00b96b',
-          borderRadius: 6,
+          borderRadius: 8,
+          colorBgContainer: t.bg.primary,
+          colorBgElevated: t.bg.sidebar,
+          colorBorder: t.border,
+          colorText: t.text.primary,
+          colorTextSecondary: t.text.secondary,
+          colorBgTextHover: t.bg.hover,
+          colorBgTextActive: t.bg.highlight,
+          boxShadow: t.shadow,
+          fontSize: 13,
+          controlHeight: 32,
+          paddingContentVertical: 8,
+          paddingContentHorizontal: 16,
+          marginXS: 4,
+          marginSM: 8,
+        },
+        components: {
+          Table: {
+            headerBg: appTheme === 'dark' ? '#1a1a1a' : '#fafafa',
+            headerColor: t.text.secondary,
+            rowHoverBg: t.bg.hover,
+            borderColor: t.border,
+            padding: 8,
+          },
+          Modal: {
+            headerBg: t.bg.primary,
+            contentBg: t.bg.primary,
+            footerBg: t.bg.primary,
+          },
+          Input: {
+            colorBgContainer: t.bg.input,
+            colorBorder: t.border,
+          },
+          Select: {
+            colorBgContainer: t.bg.input,
+            colorBorder: t.border,
+          },
+          Button: {
+            borderRadius: 6,
+            controlHeight: 30,
+          },
+          Tag: {
+            borderRadius: 4,
+          },
         },
       }}
     >
