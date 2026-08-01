@@ -427,45 +427,62 @@ export default function ChatPanel() {
       {/* 消息列表 */}
       <div style={{ flex: 1, overflow: 'auto', overflowX: 'hidden', padding: '8px 12px' }}>
         {messages.length === 0 && (
-          <div style={{ textAlign: 'center', color: t.text.muted, padding: 40, fontSize: 13 }}>
-            <RobotOutlined style={{ fontSize: 32, marginBottom: 12 }} />
-            <div>AI Agent 已就绪，我会记住之前的对话</div>
-            <div style={{ marginTop: 8, fontSize: 12 }}>
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 16,
+              background: `linear-gradient(135deg, ${t.accent}, ${t.info})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 16px', boxShadow: `0 6px 20px ${t.accent}44`,
+            }}>
+              <RobotOutlined style={{ fontSize: 24, color: '#fff' }} />
+            </div>
+            <div style={{ color: t.text.primary, fontSize: 14, fontWeight: 500, marginBottom: 12 }}>
+              AI Agent 已就绪
+            </div>
+            <div style={{ color: t.text.subtle, fontSize: 12, lineHeight: 2 }}>
               试试对我说：<br />
-              "查询所有玩家"<br />
-              "新增一个玩家叫张三，20岁"<br />
-              "把张三年龄改成25"<br />
-              "统计一共有多少玩家"<br />
-              "切换到 test 数据库"<br />
-              "查看当前集合的 Schema"<br />
-              "备份当前数据库"
+              <Tag style={{ fontSize: 11, cursor: 'pointer' }} onClick={() => { setInput('查询所有玩家'); }}>📋 查询所有玩家</Tag><br />
+              <Tag style={{ fontSize: 11, cursor: 'pointer' }} onClick={() => { setInput('统计一共有多少玩家'); }}>📊 统计玩家数量</Tag><br />
+              <Tag style={{ fontSize: 11, cursor: 'pointer' }} onClick={() => { setInput('备份当前数据库'); }}>💾 备份数据库</Tag>
             </div>
           </div>
         )}
         {messages.map((msg, i) => (
-          <div key={i} style={{ marginBottom: 12 }}>
+          <div key={i} style={{ marginBottom: 12, animation: 'fadeIn 0.2s ease' }}>
             {/* 用户消息 */}
             {msg.role === 'user' && (
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <div style={{
-                  background: t.bg.highlight, padding: '8px 12px', borderRadius: 12,
-                  maxWidth: '80%', borderBottomRightRadius: 4,
+                  background: `linear-gradient(135deg, ${t.accent}, ${t.accent}dd)`,
+                  padding: '8px 14px', borderRadius: '14px 14px 4px 14px',
+                  maxWidth: '80%', boxShadow: `0 2px 8px ${t.accent}33`,
                 }}>
-                  <Text style={{ color: t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
+                  <Text style={{ color: '#fff', fontSize: 13, whiteSpace: 'pre-wrap' }}>{msg.content}</Text>
                 </div>
-                <UserOutlined style={{ color: t.accent, marginTop: 4 }} />
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8, marginTop: 2,
+                  background: `linear-gradient(135deg, ${t.accent}, ${t.accent}88)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <UserOutlined style={{ color: '#fff', fontSize: 12 }} />
+                </div>
               </div>
             )}
 
             {/* AI 消息 */}
             {msg.role === 'assistant' && (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <RobotOutlined style={{ color: msg.isSubStep ? t.text.subtle : t.info, marginTop: 4 }} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8, marginTop: 2, flexShrink: 0,
+                  background: `linear-gradient(135deg, ${t.info}, ${t.infoLight})`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <RobotOutlined style={{ color: '#fff', fontSize: 13 }} />
+                </div>
                 <div style={{
                   background: msg.isSubStep ? t.bg.panel : t.bg.highlightBlue,
-                  padding: '8px 12px', borderRadius: 12,
-                  maxWidth: '80%', borderBottomLeftRadius: 4,
-                  opacity: msg.isSubStep ? 0.9 : 1,
+                  padding: '8px 14px', borderRadius: '4px 14px 14px 14px',
+                  maxWidth: '80%', boxShadow: `0 1px 4px ${t.border}`,
                 }}>
                   <div style={{ fontSize: 12, color: t.text.subtle, marginBottom: 4 }}>
                     {msg.round > 0 && <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>
@@ -541,14 +558,22 @@ export default function ChatPanel() {
           </div>
         ))}
         {loading && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <RobotOutlined style={{ color: t.info, marginTop: 4 }} />
-            <Spin size="small" />
-            {agentRound > 0 && (
-              <Text style={{ color: t.text.subtle, fontSize: 11 }}>
-                第 {agentRound} 轮思考中...
-              </Text>
-            )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0' }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: `linear-gradient(135deg, ${t.info}, ${t.infoLight})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <RobotOutlined style={{ color: '#fff', fontSize: 13 }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Spin size="small" />
+              {agentRound > 0 && (
+                <Text style={{ color: t.text.subtle, fontSize: 11 }}>
+                  第 {agentRound} 轮思考中<span style={{ animation: 'blink 1s step-end infinite' }}>▊</span>
+                </Text>
+              )}
+            </div>
             <Button size="small" danger type="link" onClick={() => setInterrupt(true)}
               style={{ fontSize: 11, padding: 0 }}>
               中断

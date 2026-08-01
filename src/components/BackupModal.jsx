@@ -159,7 +159,18 @@ export default function BackupModal() {
 
     return (
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
-        <Spin size="large" style={{ marginBottom: 16 }} />
+        <div style={{
+          width: 48, height: 48, borderRadius: '50%',
+          background: `conic-gradient(${t.accent} ${percent}%, ${t.bg.panel} ${percent}%)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px',
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: t.bg.primary, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, fontWeight: 600, color: t.accent,
+          }}>{percent}%</div>
+        </div>
         <div style={{ marginBottom: 8 }}>
           <Text style={{ color: t.text.primary }}>
             {status === 'backing up' && `正在备份: ${backupProgress.collectionName || ''}`}
@@ -172,10 +183,13 @@ export default function BackupModal() {
           </Text>
         </div>
         {total > 0 && (
-          <Progress percent={percent} status={status === 'done' ? 'success' : 'active'} style={{ maxWidth: 400, margin: '0 auto' }} />
+          <Progress percent={percent} status={status === 'done' ? 'success' : 'active'}
+            strokeColor={{ from: t.accent, to: t.info }}
+            style={{ maxWidth: 400, margin: '0 auto' }}
+          />
         )}
         {total > 0 && (
-          <Text type="secondary" style={{ fontSize: 12 }}>{current} / {total}</Text>
+          <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>{current} / {total}</Text>
         )}
       </div>
     );
@@ -248,6 +262,27 @@ export default function BackupModal() {
       footer={null}
       destroyOnClose
     >
+      {/* 步骤指示器 */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, justifyContent: 'center' }}>
+        {['选择', tab === 'backup' ? '备份中' : '恢复中', '完成'].map((s, i) => {
+          const stepMap = { select: 0, config: 1, progress: 1, result: 2 };
+          const current = stepMap[step] || 0;
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{
+                width: 22, height: 22, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 600,
+                background: current > i ? t.accent : current === i ? t.accent : t.bg.panel,
+                color: current >= i ? '#fff' : t.text.subtle,
+                border: current < i ? `1px solid ${t.border}` : 'none',
+              }}>{current > i ? '✓' : i + 1}</div>
+              <Text style={{ fontSize: 11, color: current >= i ? t.text.primary : t.text.subtle }}>{s}</Text>
+              {i < 2 && <div style={{ width: 24, height: 1, background: current > i ? t.accent : t.border }} />}
+            </div>
+          );
+        })}
+      </div>
       {/* 模式选择 */}
       {step === 'select' && (
         <div>

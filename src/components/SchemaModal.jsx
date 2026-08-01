@@ -42,6 +42,15 @@ const BSON_TYPE_TO_DISPLAY = {
   minKey: 'minKey', maxKey: 'maxKey',
 };
 
+// 字段类型颜色
+const TYPE_COLORS = {
+  string: 'green', int: 'blue', long: 'blue', double: 'blue', decimal: 'blue',
+  bool: 'purple', date: 'orange', objectId: 'cyan', object: 'geekblue',
+  array: 'gold', null: 'red', binData: 'default',
+  javascript: 'magenta', symbol: 'magenta', timestamp: 'orange',
+  uuid: 'cyan', regex: 'default',
+};
+
 export default function SchemaModal() {
   const { selectedDb, selectedCollection, schemaOpen, setSchemaOpen, activeConnectionId, triggerReload, doRefresh } = useStore();
   const t = useTheme();
@@ -221,19 +230,30 @@ export default function SchemaModal() {
           {/* 字段属性 */}
           <div>
             <Text strong style={{ color: t.text.secondary, fontSize: 12 }}>字段定义</Text>
-            {properties.map((p, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
-                <Input
-                  value={p.name}
-                  onChange={e => updateProperty(i, 'name', e.target.value)}
-                  placeholder="输入字段名"
-                  size="small"
-                  style={{ width: 160 }}
-                  disabled={p.name === '_id'}
-                />
+            {properties.map((p, i) => {
+            const isRequired = p.name ? requiredFields.includes(p.name) : false;
+            return (
+              <div key={i} style={{
+                display: 'flex', gap: 8, marginTop: 4, alignItems: 'center',
+                padding: '6px 10px', borderRadius: 8,
+                background: isRequired ? `${t.accent}0d` : 'transparent',
+                border: isRequired ? `1px solid ${t.accent}22` : 'none',
+              }}>
+                <div style={{ position: 'relative' }}>
+                  <Input
+                    value={p.name}
+                    onChange={e => updateProperty(i, 'name', e.target.value)}
+                    placeholder="输入字段名"
+                    size="small"
+                    style={{ width: 160, paddingRight: p.name === '_id' ? 8 : 8 }}
+                    disabled={p.name === '_id'}
+                  />
+                  {isRequired && <Tag color="red" style={{ position: 'absolute', right: -38, top: 1, fontSize: 9, lineHeight: '14px', padding: '0 4px', border: 'none' }}>必填</Tag>}
+                </div>
                 <Select value={p.type} onChange={v => updateProperty(i, 'type', v)} size="small" style={{ width: 100 }} options={BSON_TYPES} />
+                <Tag color={TYPE_COLORS[p.type] || 'default'} style={{ fontSize: 10, padding: '0 6px', lineHeight: '20px', border: 'none' }}>{p.type}</Tag>
                 <Checkbox
-                  checked={p.name ? requiredFields.includes(p.name) : false}
+                  checked={isRequired}
                   onChange={e => { if (p.name) toggleRequired(p.name, e.target.checked); }}
                   disabled={!p.name || p.name === '_id'}
                   title="勾选表示必填（非空）"
@@ -242,7 +262,8 @@ export default function SchemaModal() {
                   <Button icon={<DeleteOutlined />} size="small" danger type="text" onClick={() => removeProperty(i)} />
                 )}
               </div>
-            ))}
+            );
+          })}
             <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addProperty} disabled={isSystemDb} style={{ marginTop: 4 }}>添加字段</Button>
           </div>
         </div>

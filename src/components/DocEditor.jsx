@@ -73,7 +73,8 @@ export default function DocEditor() {
   const [fields, setFields] = useState([]);
   const [saving, setSaving] = useState(false);
   const [schemaFields, setSchemaFields] = useState([]);
-  const [schemaFieldTypes, setSchemaFieldTypes] = useState({}); // 字段名 → 类型
+  const [schemaFieldTypes, setSchemaFieldTypes] = useState({});
+  const [requiredFields, setRequiredFields] = useState([]);
 
   // Schema 类型映射
   const SCHEMA_TO_DISPLAY = {
@@ -97,7 +98,9 @@ export default function DocEditor() {
             const schema = await window.__mongo.getCollectionSchema(activeConnectionId, selectedDb, selectedCollection);
             if (schema.validator && schema.validator.$jsonSchema) {
               const props = schema.validator.$jsonSchema.properties || {};
+              const req = schema.validator.$jsonSchema.required || [];
               setSchemaFields(Object.keys(props));
+              setRequiredFields(req);
               Object.entries(props).forEach(([name, def]) => {
                 schemaTypes[name] = SCHEMA_TO_DISPLAY[def.bsonType] || def.bsonType || 'string';
               });
@@ -188,19 +191,34 @@ export default function DocEditor() {
         <Button key="save" type="primary" loading={saving} onClick={handleSave}>{editingMode === 'edit' ? '保存' : '创建'}</Button>,
       ]}>
       <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
+        {fields.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 40, color: t.text.subtle }}>
+            <DatabaseOutlined style={{ fontSize: 32, color: t.text.muted, marginBottom: 8 }} />
+            <div>暂无字段，点击下方"添加字段"</div>
+          </div>
+        )}
         {fields.map((field, index) => (
-          <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <Select
-              value={field.key || undefined}
-              onChange={v => updateField(index, 'key', v)}
-              placeholder="选择字段"
-              style={{ width: 160 }}
-              size="middle"
-              options={fieldNames}
-              showSearch
-              allowClear
-              disabled={editingMode === 'edit' && field.originalKey === '_id'}
-            />
+          <div key={index} style={{
+            display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center',
+            padding: '8px 12px', background: t.bg.panel, borderRadius: 8,
+            border: requiredFields.includes(field.key) ? `1px solid ${t.accent}44` : 'none',
+          }}>
+            <div style={{ width: 160, position: 'relative' }}>
+              <Select
+                value={field.key || undefined}
+                onChange={v => updateField(index, 'key', v)}
+                placeholder="选择字段"
+                style={{ width: 160 }}
+                size="middle"
+                options={fieldNames}
+                showSearch
+                allowClear
+                disabled={editingMode === 'edit' && field.originalKey === '_id'}
+              />
+              {requiredFields.includes(field.key) && (
+                <Tag color="red" style={{ position: 'absolute', right: -18, top: -8, fontSize: 9, lineHeight: '14px', padding: '0 4px', border: 'none' }}>必填</Tag>
+              )}
+            </div>
             <Select value={field.type} onChange={v => updateField(index, 'type', v)}
               style={{ width: 170 }} size="middle" options={TYPE_OPTIONS} />
             {field.type === 'date' ? (

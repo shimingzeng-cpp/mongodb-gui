@@ -440,6 +440,13 @@ export default function DocTable() {
           ),
         }]}
         dataSource={documents} rowKey="_id" loading={loading} size="small" virtual
+        locale={{ emptyText: (
+          <div style={{ padding: '32px 0', textAlign: 'center' }}>
+            <DatabaseOutlined style={{ fontSize: 32, color: t.text.muted, marginBottom: 8 }} />
+            <div style={{ color: t.text.subtle, fontSize: 13 }}>暂无数据</div>
+            <div style={{ color: t.text.muted, fontSize: 11, marginTop: 4 }}>点击"新建文档"添加第一条数据</div>
+          </div>
+        )}}
         rowClassName={(_, i) => i % 2 === 0 ? 'zebra-row' : ''}
         scroll={{ y: 500, x: 'max-content' }}
         pagination={{
