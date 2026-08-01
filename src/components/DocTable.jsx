@@ -68,6 +68,7 @@ function inferFieldType(docs, field) {
     if (typeof val === 'boolean') { types.add('bool'); break; }
     if (typeof val === 'string') {
       if (/^[a-f\d]{24}$/i.test(val)) { types.add('objectId'); break; }
+      if (/^\d+$/.test(val) && val.length > 4) { types.add('string'); break; }
       if (!isNaN(Date.parse(val))) { types.add('date'); break; }
       types.add('string'); break;
     }
