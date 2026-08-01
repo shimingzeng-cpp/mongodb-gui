@@ -15,7 +15,6 @@ export default function DbTree() {
   const [hoveredDb, setHoveredDb] = useState(null);
   const [hoveredCol, setHoveredCol] = useState(null);
   const [createModal, setCreateModal] = useState({ open: false, dbName: null, isNewDb: false });
-  const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDbName, setNewDbName] = useState('');
 
@@ -98,8 +97,6 @@ export default function DbTree() {
   const handleCreate = async () => {
     if (!newName.trim() && !createModal.isNewDb) return;
     if (createModal.isNewDb && !newDbName.trim()) return;
-    if (creating) return;
-    setCreating(true);
     try {
       const dbName = createModal.isNewDb ? newDbName.trim() : createModal.dbName;
       const colName = newName.trim() || '_default';
@@ -109,7 +106,6 @@ export default function DbTree() {
       setCreateModal({ open: false, dbName: null, isNewDb: false });
       setNewName('');
       setNewDbName('');
-      setCreating(false);
       // 如果创建了新数据库，刷新数据库列表
       if (createModal.isNewDb) {
         const dbs = await window.__mongo.listDatabases(activeConnectionId);
@@ -121,7 +117,7 @@ export default function DbTree() {
       setSelectedDb(dbName);
       setSelectedCollection(colName);
       setDocuments([], 0);
-    } catch (err) { message.error('创建失败: ' + err.message); setCreating(false); }
+    } catch (err) { message.error('创建失败: ' + err.message); }
   };
 
   return (
@@ -278,7 +274,7 @@ export default function DbTree() {
         </div>
       ))}
 
-      <Modal title={<span>{createModal.isNewDb ? <PlusOutlined style={{ color: t.accent, marginRight: 8 }} /> : <TableOutlined style={{ color: t.info, marginRight: 8 }} />}{createModal.isNewDb ? '新建数据库' : '新建集合'}</span>} open={createModal.open} onOk={handleCreate} destroyOnClose confirmLoading={creating}
+      <Modal title={<span>{createModal.isNewDb ? <PlusOutlined style={{ color: t.accent, marginRight: 8 }} /> : <TableOutlined style={{ color: t.info, marginRight: 8 }} />}{createModal.isNewDb ? '新建数据库' : '新建集合'}</span>} open={createModal.open} onOk={handleCreate} destroyOnClose
         onCancel={() => { setCreateModal({ open: false, dbName: null, isNewDb: false }); setNewName(''); setNewDbName(''); }}
         okText="创建" cancelText="取消" maskClosable={false}>
         {createModal.isNewDb ? (

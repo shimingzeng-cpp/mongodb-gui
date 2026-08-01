@@ -150,11 +150,6 @@ export default function App() {
             borderColor: t.border,
             padding: 8,
           },
-          Modal: {
-            headerBg: t.bg.primary,
-            contentBg: t.bg.primary,
-            footerBg: t.bg.primary,
-          },
           Input: {
             colorBgContainer: t.bg.input,
             colorBorder: t.border,
