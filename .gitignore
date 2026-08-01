@@ -6,3 +6,5 @@ dist/
 Thumbs.dbrelease/
 test_01.csv
 release/
+.workbuddy/
+docs/
