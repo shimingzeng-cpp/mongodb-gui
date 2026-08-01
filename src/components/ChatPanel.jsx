@@ -223,6 +223,30 @@ export default function ChatPanel() {
       const execResults = [];
       for (const cmd of commands) {
         if (cmd && typeof cmd === 'string' && cmd.trim()) {
+          // 危险操作拦截
+          const lower = cmd.toLowerCase();
+          const isDangerous =
+            lower.includes('dropdatabase') || lower.includes('.drop()') ||
+            lower.includes('dropdatabase(') || lower.includes('dropcollection') ||
+            lower.includes('deletemany') || lower.includes('deleteone') ||
+            lower.includes('remove(') || lower.includes('updateone') || lower.includes('updatemany');
+
+          if (isDangerous) {
+            const confirmed = await new Promise((resolve) => {
+              Modal.confirm({
+                title: '⚠️ 危险操作确认',
+                content: `即将执行：\n${cmd}\n\n此操作不可撤销，是否继续？`,
+                okText: '确认执行', okType: 'danger', cancelText: '取消',
+                onOk: () => resolve(true),
+                onCancel: () => resolve(false),
+              });
+            });
+            if (!confirmed) {
+              execResults.push({ success: false, error: '用户已取消' });
+              continue;
+            }
+          }
+
           const result = await window.__mongo.executeShell(safeActiveId, safeSelectedDb, cmd);
           execResults.push(result);
           // 刷新 UI
