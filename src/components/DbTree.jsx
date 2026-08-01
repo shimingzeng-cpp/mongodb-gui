@@ -148,21 +148,36 @@ export default function DbTree() {
                 {
                   key: 'delete', icon: <DeleteOutlined />, label: '删除数据库', danger: true,
                   onClick: () => {
-                    Modal.confirm({
-                      title: `删除数据库 "${db.name}"?`,
-                      content: '此操作将删除该数据库及其所有集合和数据，不可撤销！',
-                      okText: '删除', okType: 'danger', cancelText: '取消',
-                      onOk: async () => {
-                        try {
-                          await window.__mongo.dropDatabase(activeConnectionId, db.name);
-                          message.success(`数据库 ${db.name} 已删除`);
-                          setSelectedDb(null);
-                          setSelectedCollection(null);
-                          setDocuments([], 0);
-                          const dbs = await window.__mongo.listDatabases(activeConnectionId);
-                          setDatabases(dbs);
-                        } catch (err) { message.error('删除失败: ' + err.message); }
+                    let inputVal = '';
+                    const modal = Modal.confirm({
+                      title: `⚠️ 删除数据库 "${db.name}"`,
+                      icon: null,
+                      content: (
+                        <div>
+                          <p style={{ color: '#ff4d4f', marginBottom: 8 }}>此操作将删除该数据库及其所有集合和数据，<strong>不可撤销</strong>！</p>
+                          <p style={{ marginBottom: 8 }}>请输入数据库名称 <strong>{db.name}</strong> 确认：</p>
+                          <Input placeholder="输入数据库名称" onChange={e => { inputVal = e.target.value; }} size="small" />
+                        </div>
+                      ),
+                      okText: '确认删除', okType: 'danger', cancelText: '取消',
+                      onOk: () => {
+                        if (inputVal !== db.name) {
+                          message.error('数据库名称不匹配，已取消删除');
+                          return Promise.reject();
+                        }
+                        return (async () => {
+                          try {
+                            await window.__mongo.dropDatabase(activeConnectionId, db.name);
+                            message.success(`数据库 ${db.name} 已删除`);
+                            setSelectedDb(null);
+                            setSelectedCollection(null);
+                            setDocuments([], 0);
+                            const dbs = await window.__mongo.listDatabases(activeConnectionId);
+                            setDatabases(dbs);
+                          } catch (err) { message.error('删除失败: ' + err.message); }
+                        })();
                       },
+                      onCancel: () => {},
                     });
                   },
                 },
@@ -222,9 +237,10 @@ export default function DbTree() {
                           key: 'delete', icon: <DeleteOutlined />, label: '删除集合', danger: true,
                           onClick: () => {
                             Modal.confirm({
-                              title: `删除集合 "${col.name}"?`,
-                              content: '此操作不可撤销',
-                              okText: '删除', okType: 'danger', cancelText: '取消',
+                              title: `⚠️ 删除集合 "${col.name}"?`,
+                              icon: null,
+                              content: <p style={{ color: '#ff4d4f' }}>此操作将删除该集合及其所有数据，<strong>不可撤销</strong>！</p>,
+                              okText: '确认删除', okType: 'danger', cancelText: '取消',
                               onOk: async () => {
                                 try {
                                   await window.__mongo.dropCollection(activeConnectionId, db.name, col.name);

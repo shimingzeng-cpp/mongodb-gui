@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Input, Button, Space, Typography, message, Spin, Tag } from 'antd';
+import { Input, Button, Space, Typography, message, Spin, Tag, Modal } from 'antd';
 import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
@@ -319,6 +319,35 @@ export default function ChatPanel() {
 
   const executeCommand = async (command, msgObj) => {
     try {
+      // 危险操作拦截：需要用户确认
+      const lower = command.toLowerCase();
+      const isDangerous =
+        lower.includes('dropdatabase') || lower.includes('.drop()') ||
+        lower.includes('dropdatabase(') || lower.includes('dropcollection') ||
+        lower.includes('deletemany') || lower.includes('deleteone') ||
+        lower.includes('remove(') || lower.includes('updateone') || lower.includes('updatemany');
+
+      if (isDangerous) {
+        const confirmed = await new Promise((resolve) => {
+          Modal.confirm({
+            title: '⚠️ 危险操作确认',
+            content: `即将执行：\n${command}\n\n此操作不可撤销，是否继续？`,
+            okText: '确认执行',
+            okType: 'danger',
+            cancelText: '取消',
+            onOk: () => resolve(true),
+            onCancel: () => resolve(false),
+          });
+        });
+        if (!confirmed) {
+          setMessages(prev => prev.map(m => {
+            if (m.time !== msgObj.time) return m;
+            return { ...m, executed: true, execResults: [...(m.execResults || []), { success: false, error: '已取消' }] };
+          }));
+          return;
+        }
+      }
+
       const result = await window.__mongo.executeShell(activeConnectionId, selectedDb, command);
       setMessages(prev => prev.map(m => {
         if (m.time !== msgObj.time) return m;
@@ -328,7 +357,6 @@ export default function ChatPanel() {
 
       // 执行成功后刷新 UI
       if (result.success) {
-        const lower = command.toLowerCase();
         const isMutation =
           lower.includes('drop') || lower.includes('insert') ||
           lower.includes('update') || lower.includes('delete') ||
