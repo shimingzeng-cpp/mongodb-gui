@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { Modal, Button, Input, Select, message, Typography, DatePicker } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
@@ -182,7 +182,7 @@ export default function DocEditor() {
   };
 
   return (
-    <Modal title={editingMode === 'edit' ? '编辑文档' : '新建文档'} open={!!editingMode} onCancel={handleClose} width={800}
+    <Modal title={<span>{editingMode === 'edit' ? <EditOutlined style={{ color: t.accent, marginRight: 8 }} /> : <PlusOutlined style={{ color: t.accent, marginRight: 8 }} />}{editingMode === 'edit' ? '编辑文档' : '新建文档'}</span>} open={!!editingMode} onCancel={handleClose} width={800}
       footer={[
         <Button key="cancel" onClick={handleClose}>取消</Button>,
         <Button key="save" type="primary" loading={saving} onClick={handleSave}>{editingMode === 'edit' ? '保存' : '创建'}</Button>,

@@ -11,6 +11,15 @@ import ConnectionEditModal from './ConnectionEditModal';
 
 const { Text } = Typography;
 
+function formatTimeAgo(timestamp) {
+  const diff = Date.now() - timestamp;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`;
+  return new Date(timestamp).toLocaleDateString();
+}
+
 export default function ConnectionList() {
   const {
     connections, activeConnectionId, connected, connectionLoading,
@@ -160,23 +169,30 @@ export default function ConnectionList() {
                   onMouseEnter={() => setHoveredId(conn.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   style={{
-                    cursor: 'pointer', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
+                    cursor: 'pointer', padding: '6px 12px', margin: '1px 8px', borderRadius: 6,
+                    display: 'flex', alignItems: 'center', gap: 8,
                     background: activeConnectionId === conn.id ? t.bg.highlight : (hoveredId === conn.id ? t.bg.hover : 'transparent'),
-                    borderLeft: activeConnectionId === conn.id ? `3px solid ${t.accent}` : '3px solid transparent',
-                    transition: 'all 0.2s',
+                    borderLeft: 'none',
+                    transition: 'all 0.15s',
                   }}
                 >
                   <span style={{
                     width: 8, height: 8, borderRadius: '50%',
                     background: getStatusColor(conn), flexShrink: 0,
+                    boxShadow: activeConnectionId === conn.id && connected ? `0 0 6px ${t.accent}` : 'none',
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Text style={{ color: t.text.primary, fontSize: 12, display: 'block', lineHeight: 1.3 }} ellipsis>
                       {conn.name}
                     </Text>
-                    <Text type="secondary" style={{ fontSize: 10, display: 'block', lineHeight: 1.2 }}>
+                    <Text style={{ color: t.text.subtle, fontSize: 10, display: 'block' }}>
                       {conn.host}:{conn.port}
                     </Text>
+                    {conn.updatedAt && (
+                      <Text style={{ color: t.text.muted, fontSize: 9, display: 'block' }}>
+                        {formatTimeAgo(conn.updatedAt)}
+                      </Text>
+                    )}
                   </div>
                   {activeConnectionId === conn.id && connectionLoading ? (
                     <LoadingOutlined style={{ color: t.accent, fontSize: 12 }} />

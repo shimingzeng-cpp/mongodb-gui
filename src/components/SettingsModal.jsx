@@ -108,7 +108,7 @@ export default function SettingsModal() {
 
   return (
     <Modal
-      title="设置"
+      title={<span><SettingOutlined style={{ color: t.accent, marginRight: 8 }} />设置</span>}
       open={settingsOpen}
       onCancel={() => setSettingsOpen(false)}
       width={500}

@@ -341,24 +341,39 @@ function ShellTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'visible' }}>
-      <div style={{ padding: '0 8px 8px', flexShrink: 0, overflow: 'visible' }}>
-        <div style={{ marginBottom: 4, fontSize: 12 }}>
-          <Text type="secondary">当前库：</Text>
-          <Text code style={{ color: selectedDb ? t.accent : t.error }}>
-            {selectedDb || '未选择'}
+      {/* 终端风格标题栏 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '6px 12px', background: t.bg.code, borderBottom: `1px solid ${t.border}`,
+        borderTopLeftRadius: 6, borderTopRightRadius: 6, margin: '0 8px',
+      }}>
+        <Space size={6}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f56' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ffbd2e' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#27c93f' }} />
+          <Text style={{ color: t.text.subtle, fontSize: 11, marginLeft: 8 }}>MongoDB Shell</Text>
+        </Space>
+        <Space size={6}>
+          <Text style={{ color: t.text.subtle, fontSize: 11 }}>
+            <Text type="secondary">库：</Text>
+            <Text style={{ color: selectedDb ? t.accent : t.error, fontSize: 11 }}>{selectedDb || '未选择'}</Text>
+            {selectedCollection && (
+              <span> / <Text style={{ color: t.info, fontSize: 11 }}>{selectedCollection}</Text></span>
+            )}
           </Text>
-          {selectedCollection && (
-            <span>
-              <Text type="secondary"> / </Text>
-              <Text code style={{ color: t.info }}>{selectedCollection}</Text>
-            </span>
-          )}
-        </div>
-        <div style={{ position: 'relative' }}>
+        </Space>
+      </div>
+      <div style={{ padding: '0 8px 8px', flexShrink: 0, overflow: 'visible' }}>
+        <div style={{ position: 'relative', marginTop: 8 }}>
+        <div style={{ position: 'absolute', left: 10, top: 10, zIndex: 1, color: t.accent, fontFamily: 'Consolas, monospace', fontSize: 13, fontWeight: 'bold', userSelect: 'none' }}>$</div>
         <TextArea ref={textareaRef} value={command} onChange={handleChange} onKeyDown={handleKeyDown}
           placeholder="db.t_player.find()"
           rows={4}
-          style={{ background: t.bg.code, color: t.accent, border: `1px solid ${t.border}`, fontFamily: 'Consolas, Monaco, monospace', fontSize: 13, borderRadius: 6, resize: 'vertical' }}
+          style={{
+            background: t.bg.code, color: t.accent, border: `1px solid ${t.border}`,
+            fontFamily: 'Consolas, Monaco, monospace', fontSize: 13, borderRadius: 6,
+            resize: 'vertical', paddingLeft: 24,
+          }}
           spellCheck={false} />
         {suggestions.length > 0 && (
           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, marginTop: 2, background: t.bg.primary, border: `1px solid ${t.accent}`, borderRadius: 6, maxHeight: 180, overflow: 'auto', boxShadow: t.shadow }}>
@@ -381,7 +396,11 @@ function ShellTab() {
           </Space>
         </div>
       </div>
-      <div style={{ flex: 1, overflow: 'hidden', padding: '0 8px 8px' }}>
+      <div style={{
+        flex: 1, overflow: 'hidden', padding: '0 8px 8px',
+        background: t.bg.code, margin: '0 8px', borderRadius: '0 0 6px 6px',
+        border: `1px solid ${t.border}`, borderTop: 'none',
+      }}>
         {loading ? <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div> : renderResult(result)}
       </div>
 

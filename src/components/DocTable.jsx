@@ -6,6 +6,15 @@ import { useTheme } from '../theme';
 
 const { Text } = Typography;
 
+// 字段类型颜色映射
+const TYPE_COLORS = {
+  string: 'green', int32: 'blue', int64: 'blue', double: 'blue', decimal: 'blue',
+  bool: 'purple', date: 'orange', objectId: 'cyan', object: 'geekblue',
+  array: 'gold', null: 'red', binary: 'default',
+  code: 'magenta', symbol: 'magenta', timestamp: 'orange',
+  uuid: 'cyan', regex: 'default',
+};
+
 const OPERATORS = [
   { label: '=', value: 'eq' },
   { label: '!=', value: 'ne' },
@@ -153,8 +162,10 @@ export default function DocTable() {
     // 从 Schema 中补充字段（即使文档中没有该字段，也能显示）
     Object.keys(schemaTypes).forEach(k => keys.add(k));
     if (keys.size === 0) { setColumns([]); return; }
-    setColumns(Array.from(keys).map(key => ({
-      title: <span>{key} <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0 }}>{schemaTypes[key] || inferFieldType(documents, key)}</Tag></span>, dataIndex: key, key,
+    setColumns(Array.from(keys).map(key => {
+      const fieldType = schemaTypes[key] || inferFieldType(documents, key);
+      return {
+      title: <span>{key} <Tag color={TYPE_COLORS[fieldType] || 'default'} style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0, border: 'none' }}>{fieldType}</Tag></span>, dataIndex: key, key,
       ellipsis: true,
       sorter: (a, b) => {
         const va = a[key], vb = b[key];
@@ -182,7 +193,8 @@ export default function DocTable() {
         }
         return renderCellValue(val, record, key);
       },
-    })));
+      };
+    }));
   }, [documents, schemaTypes]);
 
   const renderCellValue = (val, record, field) => {
@@ -428,6 +440,7 @@ export default function DocTable() {
           ),
         }]}
         dataSource={documents} rowKey="_id" loading={loading} size="small" virtual
+        rowClassName={(_, i) => i % 2 === 0 ? 'zebra-row' : ''}
         scroll={{ y: 500, x: 'max-content' }}
         pagination={{
           current: page, pageSize, total: totalDocs, showSizeChanger: true,

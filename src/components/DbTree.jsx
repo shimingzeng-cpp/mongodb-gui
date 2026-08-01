@@ -273,7 +273,7 @@ export default function DbTree() {
         </div>
       ))}
 
-      <Modal title={createModal.isNewDb ? '新建数据库' : '新建集合（表）'} open={createModal.open} onOk={handleCreate}
+      <Modal title={<span>{createModal.isNewDb ? <PlusOutlined style={{ color: t.accent, marginRight: 8 }} /> : <TableOutlined style={{ color: t.info, marginRight: 8 }} />}{createModal.isNewDb ? '新建数据库' : '新建集合'}</span>} open={createModal.open} onOk={handleCreate}
         onCancel={() => { setCreateModal({ open: false, dbName: null, isNewDb: false }); setNewName(''); setNewDbName(''); }}
         okText="创建" cancelText="取消">
         {createModal.isNewDb ? (
