@@ -84,7 +84,7 @@ export default function DocTable() {
     selectedDb, selectedCollection,
     documents, totalDocs, page, pageSize,
     setPage, setPageSize, setDocuments, filter, setFilter, setEditingDoc, setSchemaOpen, setIndexOpen, setExportOpen, reloadKey,
-    activeConnectionId, triggerReload, doRefresh,
+    activeConnectionId, triggerReload,
   } = useStore();
   const t = useTheme();
 
@@ -408,7 +408,7 @@ export default function DocTable() {
           <Button
             size="small"
             icon={<ReloadOutlined />}
-            onClick={() => { triggerReload(); doRefresh(); }}
+            onClick={() => { triggerReload(); }}
             title="刷新数据"
           />
           <Button
