@@ -155,7 +155,7 @@ export default function DocTable() {
     if (keys.size === 0) { setColumns([]); return; }
     setColumns(Array.from(keys).map(key => ({
       title: <span>{key} <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0 }}>{schemaTypes[key] || inferFieldType(documents, key)}</Tag></span>, dataIndex: key, key,
-      width: 160, ellipsis: true,
+      ellipsis: true,
       sorter: (a, b) => {
         const va = a[key], vb = b[key];
         if (va == null && vb == null) return 0;
