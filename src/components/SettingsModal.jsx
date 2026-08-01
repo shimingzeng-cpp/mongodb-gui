@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, Select, Button, Space, Spin, message } from 'antd';
-import { ReloadOutlined, LinkOutlined } from '@ant-design/icons';
+import { SettingOutlined, ReloadOutlined, LinkOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
