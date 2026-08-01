@@ -67,14 +67,19 @@ function WelcomeScreen() {
         选择连接开始使用
       </Text>
       {connections.length > 0 && (
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 600 }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 180px)',
+          gap: 12, justifyContent: 'center',
+          maxWidth: 600, maxHeight: 360, overflowY: 'auto',
+          padding: '4px 0',
+        }}>
           {connections.map(conn => (
             <Card
               key={conn.id}
               hoverable
               size="small"
               style={{
-                width: 200, background: t.bg.card, border: `1px solid ${t.border}`,
+                background: t.bg.card, border: `1px solid ${t.border}`,
                 borderRadius: 12, transition: 'all 0.2s',
               }}
               styles={{ body: { padding: 16 } }}
@@ -91,7 +96,7 @@ function WelcomeScreen() {
                 }}>
                   <DatabaseOutlined style={{ fontSize: 18, color: '#fff' }} />
                 </div>
-                <Text style={{ color: t.text.primary, display: 'block', fontWeight: 500, marginBottom: 2 }}>{conn.name}</Text>
+                <Text style={{ color: t.text.primary, display: 'block', fontWeight: 500, marginBottom: 2, fontSize: 13 }}>{conn.name}</Text>
                 <Text style={{ color: t.text.subtle, fontSize: 11 }}>{conn.host}:{conn.port}</Text>
               </div>
             </Card>
