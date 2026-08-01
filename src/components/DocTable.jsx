@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Table, Button, Space, Input, Select, Tag, Popconfirm, message, Tooltip, Typography } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CopyOutlined, CloseOutlined, CodeOutlined, SafetyCertificateOutlined, ThunderboltOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, CopyOutlined, CloseOutlined, CodeOutlined, SafetyCertificateOutlined, ThunderboltOutlined, DownloadOutlined, FilterOutlined, DatabaseOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
