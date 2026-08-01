@@ -1,0 +1,419 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/ExportImportModal.jsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=6fd1f6e6"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+var _s = $RefreshSig$();
+import __vite__cjsImport3_react from "/node_modules/.vite/deps/react.js?v=6fd1f6e6"; const React = __vite__cjsImport3_react.__esModule ? __vite__cjsImport3_react.default : __vite__cjsImport3_react; const useState = __vite__cjsImport3_react["useState"]; const useEffect = __vite__cjsImport3_react["useEffect"];
+import { Modal, Button, Select, Space, Typography, message, Tag } from "/node_modules/.vite/deps/antd.js?v=6fd1f6e6";
+import { ExportOutlined, ImportOutlined, DownloadOutlined, UploadOutlined } from "/node_modules/.vite/deps/@ant-design_icons.js?v=6fd1f6e6";
+import useStore from "/src/store.js";
+import { useTheme } from "/src/theme.js";
+const { Text, Title } = Typography;
+export default function ExportImportModal() {
+  _s();
+  const { selectedDb, selectedCollection, exportOpen, setExportOpen, triggerReload, activeConnectionId } = useStore();
+  const t = useTheme();
+  const [tab, setTab] = useState("export");
+  const [format, setFormat] = useState("json");
+  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [importMode, setImportMode] = useState("overwrite");
+  const handleExport = async () => {
+    if (!selectedDb || !selectedCollection) return;
+    setLoading(true);
+    try {
+      const result = await window.__mongo.exportCollection(activeConnectionId, selectedDb, selectedCollection, format);
+      const ext = format === "csv" ? "csv" : "json";
+      const defaultName = `${selectedCollection}.${ext}`;
+      const saveResult = await window.__dialog.saveFile(defaultName, result.data);
+      if (saveResult.success) {
+        message.success(`导出成功: ${saveResult.filePath}`);
+      }
+    } catch (err) {
+      message.error("导出失败: " + err.message);
+    }
+    setLoading(false);
+  };
+  const handleImport = async () => {
+    setLoading(true);
+    try {
+      const result = await window.__dialog.openFile(
+        [
+          { name: "JSON / CSV", extensions: ["json", "csv"] }
+        ]
+      );
+      if (!result.success) {
+        setLoading(false);
+        return;
+      }
+      const ext = result.filePath.split(".").pop().toLowerCase();
+      let docs;
+      if (ext === "csv") {
+        const lines = result.content.split(/\r?\n/).filter((l) => l.trim());
+        if (lines.length < 2) throw new Error("CSV 文件格式错误：至少需要标题行和一行数据");
+        const headers = parseCSVLine(lines[0]);
+        docs = lines.slice(1).map((line) => {
+          const values = parseCSVLine(line);
+          const doc = {};
+          headers.forEach((h, i) => {
+            let val = values[i] || "";
+            if (val === "") return;
+            if (!isNaN(val) && val.trim()) val = Number(val);
+            if (val === "true") val = true;
+            if (val === "false") val = false;
+            doc[h] = val;
+          });
+          return doc;
+        });
+      } else {
+        docs = JSON.parse(result.content);
+      }
+      if (importMode === "overwrite") {
+        await window.__mongo.importCollection(activeConnectionId, selectedDb, selectedCollection, docs, true);
+        message.success(`导入完成：已覆盖导入 ${docs.length} 条数据`);
+      } else {
+        const importResult = await window.__mongo.importCollection(activeConnectionId, selectedDb, selectedCollection, docs);
+        let msg = `导入完成：新增 ${importResult.insertedCount} 条`;
+        if (importResult.replacedCount) msg += `，覆盖 ${importResult.replacedCount} 条`;
+        message.success(msg);
+      }
+      triggerReload();
+      setExportOpen(false);
+    } catch (err) {
+      message.error("导入失败: " + err.message);
+    }
+    setLoading(false);
+  };
+  function parseCSVLine(line) {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  }
+  const handlePreview = async () => {
+    try {
+      const result = await window.__mongo.exportCollection(activeConnectionId, selectedDb, selectedCollection, "json");
+      const data = JSON.parse(result.data);
+      setPreview(data.slice(0, 5));
+    } catch (err) {
+      message.error("预览失败: " + err.message);
+    }
+  };
+  useEffect(() => {
+    if (exportOpen && tab === "export") {
+      setPreview(null);
+    }
+  }, [exportOpen, tab]);
+  return /* @__PURE__ */ jsxDEV(
+    Modal,
+    {
+      title: /* @__PURE__ */ jsxDEV("span", { children: [
+        /* @__PURE__ */ jsxDEV(DownloadOutlined, { style: { color: t.accent, marginRight: 8 } }, void 0, false, {
+          fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+          lineNumber: 143,
+          columnNumber: 20
+        }, this),
+        "导出/导入数据"
+      ] }, void 0, true, {
+        fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+        lineNumber: 143,
+        columnNumber: 14
+      }, this),
+      open: exportOpen,
+      onCancel: () => {
+        setExportOpen(false);
+        setPreview(null);
+      },
+      width: 600,
+      footer: null,
+      children: [
+        /* @__PURE__ */ jsxDEV("div", { style: { marginBottom: 12 }, children: /* @__PURE__ */ jsxDEV(Space, { children: [
+          /* @__PURE__ */ jsxDEV(Button, { type: tab === "export" ? "primary" : "default", size: "small", icon: /* @__PURE__ */ jsxDEV(ExportOutlined, {}, void 0, false, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 151,
+            columnNumber: 86
+          }, this), onClick: () => setTab("export"), children: "导出" }, void 0, false, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 151,
+            columnNumber: 11
+          }, this),
+          /* @__PURE__ */ jsxDEV(Button, { type: tab === "import" ? "primary" : "default", size: "small", icon: /* @__PURE__ */ jsxDEV(ImportOutlined, {}, void 0, false, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 152,
+            columnNumber: 86
+          }, this), onClick: () => setTab("import"), children: "导入" }, void 0, false, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 152,
+            columnNumber: 11
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+          lineNumber: 150,
+          columnNumber: 9
+        }, this) }, void 0, false, {
+          fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+          lineNumber: 149,
+          columnNumber: 7
+        }, this),
+        tab === "export" ? /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV("div", { style: { marginBottom: 12 }, children: [
+            /* @__PURE__ */ jsxDEV(Text, { type: "secondary", style: { display: "block", marginBottom: 8 }, children: [
+              "集合：",
+              /* @__PURE__ */ jsxDEV(Text, { code: true, children: [
+                selectedDb,
+                ".",
+                selectedCollection
+              ] }, void 0, true, {
+                fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+                lineNumber: 160,
+                columnNumber: 18
+              }, this)
+            ] }, void 0, true, {
+              fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+              lineNumber: 159,
+              columnNumber: 13
+            }, this),
+            /* @__PURE__ */ jsxDEV(Space, { children: [
+              /* @__PURE__ */ jsxDEV(
+                Select,
+                {
+                  value: format,
+                  onChange: setFormat,
+                  size: "small",
+                  style: { width: 100 },
+                  options: [
+                    { label: "JSON", value: "json" },
+                    { label: "CSV", value: "csv" }
+                  ]
+                },
+                void 0,
+                false,
+                {
+                  fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+                  lineNumber: 163,
+                  columnNumber: 15
+                },
+                this
+              ),
+              /* @__PURE__ */ jsxDEV(Button, { type: "primary", icon: /* @__PURE__ */ jsxDEV(ExportOutlined, {}, void 0, false, {
+                fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+                lineNumber: 168,
+                columnNumber: 44
+              }, this), loading, onClick: handleExport, children: "导出" }, void 0, false, {
+                fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+                lineNumber: 168,
+                columnNumber: 15
+              }, this),
+              /* @__PURE__ */ jsxDEV(Button, { size: "small", onClick: handlePreview, children: "预览前5条" }, void 0, false, {
+                fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+                lineNumber: 169,
+                columnNumber: 15
+              }, this)
+            ] }, void 0, true, {
+              fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+              lineNumber: 162,
+              columnNumber: 13
+            }, this)
+          ] }, void 0, true, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 158,
+            columnNumber: 11
+          }, this),
+          preview && /* @__PURE__ */ jsxDEV("div", { children: [
+            /* @__PURE__ */ jsxDEV(Text, { type: "secondary", style: { fontSize: 12 }, children: "预览：" }, void 0, false, {
+              fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+              lineNumber: 174,
+              columnNumber: 15
+            }, this),
+            /* @__PURE__ */ jsxDEV("pre", { style: {
+              background: t.bg.code,
+              color: t.accent,
+              padding: 8,
+              borderRadius: 4,
+              maxHeight: 200,
+              overflow: "auto",
+              fontSize: 12,
+              marginTop: 4,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-all"
+            }, children: JSON.stringify(preview, null, 2) }, void 0, false, {
+              fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+              lineNumber: 175,
+              columnNumber: 15
+            }, this)
+          ] }, void 0, true, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 173,
+            columnNumber: 9
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+          lineNumber: 157,
+          columnNumber: 7
+        }, this) : /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV(Text, { type: "secondary", style: { display: "block", marginBottom: 8 }, children: [
+            "导入到集合：",
+            /* @__PURE__ */ jsxDEV(Text, { code: true, children: [
+              selectedDb,
+              ".",
+              selectedCollection
+            ] }, void 0, true, {
+              fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+              lineNumber: 188,
+              columnNumber: 19
+            }, this)
+          ] }, void 0, true, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 187,
+            columnNumber: 11
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { style: { marginBottom: 12 }, children: /* @__PURE__ */ jsxDEV(Space, { children: [
+            /* @__PURE__ */ jsxDEV(Text, { type: "secondary", style: { fontSize: 12 }, children: "导入模式：" }, void 0, false, {
+              fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+              lineNumber: 192,
+              columnNumber: 15
+            }, this),
+            /* @__PURE__ */ jsxDEV(
+              Button,
+              {
+                size: "small",
+                type: importMode === "append" ? "primary" : "default",
+                onClick: () => setImportMode("append"),
+                children: "追加"
+              },
+              void 0,
+              false,
+              {
+                fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+                lineNumber: 193,
+                columnNumber: 15
+              },
+              this
+            ),
+            /* @__PURE__ */ jsxDEV(
+              Button,
+              {
+                size: "small",
+                type: importMode === "overwrite" ? "primary" : "default",
+                onClick: () => setImportMode("overwrite"),
+                danger: importMode === "overwrite",
+                children: "覆盖"
+              },
+              void 0,
+              false,
+              {
+                fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+                lineNumber: 200,
+                columnNumber: 15
+              },
+              this
+            )
+          ] }, void 0, true, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 191,
+            columnNumber: 13
+          }, this) }, void 0, false, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 190,
+            columnNumber: 11
+          }, this),
+          importMode === "overwrite" && /* @__PURE__ */ jsxDEV("div", { style: {
+            padding: "6px 10px",
+            marginBottom: 12,
+            fontSize: 12,
+            color: t.warning
+          }, children: [
+            "⚠️ 覆盖模式会先",
+            /* @__PURE__ */ jsxDEV("strong", { children: "清空集合中所有数据" }, void 0, false, {
+              fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+              lineNumber: 215,
+              columnNumber: 24
+            }, this),
+            "，再导入文件内容，该操作不可撤销！"
+          ] }, void 0, true, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 211,
+            columnNumber: 9
+          }, this),
+          /* @__PURE__ */ jsxDEV(Text, { type: "secondary", style: { fontSize: 12, display: "block", marginBottom: 12 }, children: "选择 JSON 或 CSV 文件导入数据。" }, void 0, false, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 218,
+            columnNumber: 11
+          }, this),
+          /* @__PURE__ */ jsxDEV(Button, { icon: /* @__PURE__ */ jsxDEV(ImportOutlined, {}, void 0, false, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 221,
+            columnNumber: 25
+          }, this), loading, onClick: handleImport, children: "选择文件并导入" }, void 0, false, {
+            fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+            lineNumber: 221,
+            columnNumber: 11
+          }, this)
+        ] }, void 0, true, {
+          fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+          lineNumber: 186,
+          columnNumber: 7
+        }, this)
+      ]
+    },
+    void 0,
+    true,
+    {
+      fileName: "E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx",
+      lineNumber: 142,
+      columnNumber: 5
+    },
+    this
+  );
+}
+_s(ExportImportModal, "21m6x2fZsxZVhdN5ZVq6EhqlnWk=", false, function() {
+  return [useStore, useTheme];
+});
+_c = ExportImportModal;
+var _c;
+$RefreshReg$(_c, "ExportImportModal");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("E:/workbuddyProj/mongodb-gui/src/components/ExportImportModal.jsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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QUMsU0FBSSxPQUFPO0FBQUEsWUFDVnFFLFNBQVM7QUFBQSxZQUFZVCxjQUFjO0FBQUEsWUFBSUssVUFBVTtBQUFBLFlBQ2pEUixPQUFPbEUsRUFBRXNGO0FBQUFBLFVBQ1gsR0FBRTtBQUFBO0FBQUEsWUFDUyx1QkFBQyxZQUFPLHlCQUFSO0FBQUE7QUFBQTtBQUFBO0FBQUEsbUJBQWlCO0FBQUEsWUFBUztBQUFBLGVBSnJDO0FBQUE7QUFBQTtBQUFBO0FBQUEsaUJBS0E7QUFBQSxVQUVGLHVCQUFDLFFBQUssTUFBSyxhQUFZLE9BQU8sRUFBRVosVUFBVSxJQUFJSixTQUFTLFNBQVNELGNBQWMsR0FBRyxHQUFFLHFDQUFuRjtBQUFBO0FBQUE7QUFBQTtBQUFBLGlCQUVBO0FBQUEsVUFDQSx1QkFBQyxVQUFPLE1BQU0sdUJBQUMsb0JBQUQ7QUFBQTtBQUFBO0FBQUE7QUFBQSxpQkFBZSxHQUFLLFNBQWtCLFNBQVMzQyxjQUFjLHVCQUEzRTtBQUFBO0FBQUE7QUFBQTtBQUFBLGlCQUFrRjtBQUFBLGFBbkNwRjtBQUFBO0FBQUE7QUFBQTtBQUFBLGVBb0NBO0FBQUE7QUFBQTtBQUFBLElBaEZKO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQSxFQWtGQTtBQUVKO0FBQUNqQyxHQXRNdUJELG1CQUFpQjtBQUFBLFVBQ2tFSixVQUMvRkMsUUFBUTtBQUFBO0FBQUEsS0FGSUc7QUFBaUIsSUFBQStGO0FBQUEsYUFBQUEsSUFBQSIsIm5hbWVzIjpbIlJlYWN0IiwidXNlU3RhdGUiLCJ1c2VFZmZlY3QiLCJNb2RhbCIsIkJ1dHRvbiIsIlNlbGVjdCIsIlNwYWNlIiwiVHlwb2dyYXBoeSIsIm1lc3NhZ2UiLCJUYWciLCJFeHBvcnRPdXRsaW5lZCIsIkltcG9ydE91dGxpbmVkIiwiRG93bmxvYWRPdXRsaW5lZCIsIlVwbG9hZE91dGxpbmVkIiwidXNlU3RvcmUiLCJ1c2VUaGVtZSIsIlRleHQiLCJUaXRsZSIsIkV4cG9ydEltcG9ydE1vZGFsIiwiX3MiLCJzZWxlY3RlZERiIiwic2VsZWN0ZWRDb2xsZWN0aW9uIiwiZXhwb3J0T3BlbiIsInNldEV4cG9ydE9wZW4iLCJ0cmlnZ2VyUmVsb2FkIiwiYWN0aXZlQ29ubmVjdGlvbklkIiwidCIsInRhYiIsInNldFRhYiIsImZvcm1hdCIsInNldEZvcm1hdCIsImxvYWRpbmciLCJzZXRMb2FkaW5nIiwicHJldmlldyIsInNldFByZXZpZXciLCJpbXBvcnRNb2RlIiwic2V0SW1wb3J0TW9kZSIsImhhbmRsZUV4cG9ydCIsInJlc3VsdCIsIndpbmRvdyIsIl9fbW9uZ28iLCJleHBvcnRDb2xsZWN0aW9uIiwiZXh0IiwiZGVmYXVsdE5hbWUiLCJzYXZlUmVzdWx0IiwiX19kaWFsb2ciLCJzYXZlRmlsZSIsImRhdGEiLCJzdWNjZXNzIiwiZmlsZVBhdGgiLCJlcnIiLCJlcnJvciIsImhhbmRsZUltcG9ydCIsIm9wZW5GaWxlIiwibmFtZSIsImV4dGVuc2lvbnMiLCJzcGxpdCIsInBvcCIsInRvTG93ZXJDYXNlIiwiZG9jcyIsImxpbmVzIiwiY29udGVudCIsImZpbHRlciIsImwiLCJ0cmltIiwibGVuZ3RoIiwiRXJyb3IiLCJoZWFkZXJzIiwicGFyc2VDU1ZMaW5lIiwic2xpY2UiLCJtYXAiLCJsaW5lIiwidmFsdWVzIiwiZG9jIiwiZm9yRWFjaCIsImgiLCJpIiwidmFsIiwiaXNOYU4iLCJOdW1iZXIiLCJKU09OIiwicGFyc2UiLCJpbXBvcnRDb2xsZWN0aW9uIiwiaW1wb3J0UmVzdWx0IiwibXNnIiwiaW5zZXJ0ZWRDb3VudCIsInJlcGxhY2VkQ291bnQiLCJjdXJyZW50IiwiaW5RdW90ZXMiLCJjaCIsInB1c2giLCJoYW5kbGVQcmV2aWV3IiwiY29sb3IiLCJhY2NlbnQiLCJtYXJnaW5SaWdodCIsIm1hcmdpbkJvdHRvbSIsImRpc3BsYXkiLCJ3aWR0aCIsImxhYmVsIiwidmFsdWUiLCJmb250U2l6ZSIsImJhY2tncm91bmQiLCJiZyIsImNvZGUiLCJwYWRkaW5nIiwiYm9yZGVyUmFkaXVzIiwibWF4SGVpZ2h0Iiwib3ZlcmZsb3ciLCJtYXJnaW5Ub3AiLCJ3aGl0ZVNwYWNlIiwid29yZEJyZWFrIiwic3RyaW5naWZ5Iiwid2FybmluZyIsIl9jIl0sImlnbm9yZUxpc3QiOltdLCJzb3VyY2VzIjpbIkV4cG9ydEltcG9ydE1vZGFsLmpzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgUmVhY3QsIHsgdXNlU3RhdGUsIHVzZUVmZmVjdCB9IGZyb20gJ3JlYWN0JztcbmltcG9ydCB7IE1vZGFsLCBCdXR0b24sIFNlbGVjdCwgU3BhY2UsIFR5cG9ncmFwaHksIG1lc3NhZ2UsIFRhZyB9IGZyb20gJ2FudGQnO1xuaW1wb3J0IHsgRXhwb3J0T3V0bGluZWQsIEltcG9ydE91dGxpbmVkLCBEb3dubG9hZE91dGxpbmVkLCBVcGxvYWRPdXRsaW5lZCB9IGZyb20gJ0BhbnQtZGVzaWduL2ljb25zJztcbmltcG9ydCB1c2VTdG9yZSBmcm9tICcuLi9zdG9yZSc7XG5pbXBvcnQgeyB1c2VUaGVtZSB9IGZyb20gJy4uL3RoZW1lJztcblxuY29uc3QgeyBUZXh0LCBUaXRsZSB9ID0gVHlwb2dyYXBoeTtcblxuZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gRXhwb3J0SW1wb3J0TW9kYWwoKSB7XG4gIGNvbnN0IHsgc2VsZWN0ZWREYiwgc2VsZWN0ZWRDb2xsZWN0aW9uLCBleHBvcnRPcGVuLCBzZXRFeHBvcnRPcGVuLCB0cmlnZ2VyUmVsb2FkLCBhY3RpdmVDb25uZWN0aW9uSWQgfSA9IHVzZVN0b3JlKCk7XG4gIGNvbnN0IHQgPSB1c2VUaGVtZSgpO1xuICBjb25zdCBbdGFiLCBzZXRUYWJdID0gdXNlU3RhdGUoJ2V4cG9ydCcpO1xuICBjb25zdCBbZm9ybWF0LCBzZXRGb3JtYXRdID0gdXNlU3RhdGUoJ2pzb24nKTtcbiAgY29uc3QgW2xvYWRpbmcsIHNldExvYWRpbmddID0gdXNlU3RhdGUoZmFsc2UpO1xuICBjb25zdCBbcHJldmlldywgc2V0UHJldmlld10gPSB1c2VTdGF0ZShudWxsKTtcbiAgY29uc3QgW2ltcG9ydE1vZGUsIHNldEltcG9ydE1vZGVdID0gdXNlU3RhdGUoJ292ZXJ3cml0ZScpOyAvLyAnYXBwZW5kJyB8ICdvdmVyd3JpdGUnXG5cbiAgY29uc3QgaGFuZGxlRXhwb3J0ID0gYXN5bmMgKCkgPT4ge1xuICAgIGlmICghc2VsZWN0ZWREYiB8fCAhc2VsZWN0ZWRDb2xsZWN0aW9uKSByZXR1cm47XG4gICAgc2V0TG9hZGluZyh0cnVlKTtcbiAgICB0cnkge1xuICAgICAgY29uc3QgcmVzdWx0ID0gYXdhaXQgd2luZG93Ll9fbW9uZ28uZXhwb3J0Q29sbGVjdGlvbihhY3RpdmVDb25uZWN0aW9uSWQsIHNlbGVjdGVkRGIsIHNlbGVjdGVkQ29sbGVjdGlvbiwgZm9ybWF0KTtcbiAgICAgIGNvbnN0IGV4dCA9IGZvcm1hdCA9PT0gJ2NzdicgPyAnY3N2JyA6ICdqc29uJztcbiAgICAgIGNvbnN0IGRlZmF1bHROYW1lID0gYCR7c2VsZWN0ZWRDb2xsZWN0aW9ufS4ke2V4dH1gO1xuICAgICAgY29uc3Qgc2F2ZVJlc3VsdCA9IGF3YWl0IHdpbmRvdy5fX2RpYWxvZy5zYXZlRmlsZShkZWZhdWx0TmFtZSwgcmVzdWx0LmRhdGEpO1xuICAgICAgaWYgKHNhdmVSZXN1bHQuc3VjY2Vzcykge1xuICAgICAgICBtZXNzYWdlLnN1Y2Nlc3MoYOWvvOWHuuaIkOWKnzogJHtzYXZlUmVzdWx0LmZpbGVQYXRofWApO1xuICAgICAgfVxuICAgIH0gY2F0Y2ggKGVycikgeyBtZXNzYWdlLmVycm9yKCflr7zlh7rlpLHotKU6ICcgKyBlcnIubWVzc2FnZSk7IH1cbiAgICBzZXRMb2FkaW5nKGZhbHNlKTtcbiAgfTtcblxuICBjb25zdCBoYW5kbGVJbXBvcnQgPSBhc3luYyAoKSA9PiB7XG4gICAgc2V0TG9hZGluZyh0cnVlKTtcbiAgICB0cnkge1xuICAgICAgY29uc3QgcmVzdWx0ID0gYXdhaXQgd2luZG93Ll9fZGlhbG9nLm9wZW5GaWxlKFtcbiAgICAgICAgeyBuYW1lOiAnSlNPTiAvIENTVicsIGV4dGVuc2lvbnM6IFsnanNvbicsICdjc3YnXSB9LFxuICAgICAgXSk7XG4gICAgICBpZiAoIXJlc3VsdC5zdWNjZXNzKSB7IHNldExvYWRpbmcoZmFsc2UpOyByZXR1cm47IH1cblxuICAgICAgY29uc3QgZXh0ID0gcmVzdWx0LmZpbGVQYXRoLnNwbGl0KCcuJykucG9wKCkudG9Mb3dlckNhc2UoKTtcbiAgICAgIGxldCBkb2NzO1xuXG4gICAgICBpZiAoZXh0ID09PSAnY3N2Jykge1xuICAgICAgICAvLyDop6PmnpAgQ1NWXG4gICAgICAgIGNvbnN0IGxpbmVzID0gcmVzdWx0LmNvbnRlbnQuc3BsaXQoL1xccj9cXG4vKS5maWx0ZXIobCA9PiBsLnRyaW0oKSk7XG4gICAgICAgIGlmIChsaW5lcy5sZW5ndGggPCAyKSB0aHJvdyBuZXcgRXJyb3IoJ0NTViDmlofku7bmoLzlvI/plJnor6/vvJroh7PlsJHpnIDopoHmoIfpopjooYzlkozkuIDooYzmlbDmja4nKTtcbiAgICAgICAgY29uc3QgaGVhZGVycyA9IHBhcnNlQ1NWTGluZShsaW5lc1swXSk7XG4gICAgICAgIGRvY3MgPSBsaW5lcy5zbGljZSgxKS5tYXAobGluZSA9PiB7XG4gICAgICAgICAgY29uc3QgdmFsdWVzID0gcGFyc2VDU1ZMaW5lKGxpbmUpO1xuICAgICAgICAgIGNvbnN0IGRvYyA9IHt9O1xuICAgICAgICAgIGhlYWRlcnMuZm9yRWFjaCgoaCwgaSkgPT4ge1xuICAgICAgICAgICAgbGV0IHZhbCA9IHZhbHVlc1tpXSB8fCAnJztcbiAgICAgICAgICAgIGlmICh2YWwgPT09ICcnKSByZXR1cm47XG4gICAgICAgICAgICAvLyDlsJ3or5XovazmlbDlrZdcbiAgICAgICAgICAgIGlmICghaXNOYU4odmFsKSAmJiB2YWwudHJpbSgpKSB2YWwgPSBOdW1iZXIodmFsKTtcbiAgICAgICAgICAgIGlmICh2YWwgPT09ICd0cnVlJykgdmFsID0gdHJ1ZTtcbiAgICAgICAgICAgIGlmICh2YWwgPT09ICdmYWxzZScpIHZhbCA9IGZhbHNlO1xuICAgICAgICAgICAgZG9jW2hdID0gdmFsO1xuICAgICAgICAgIH0pO1xuICAgICAgICAgIHJldHVybiBkb2M7XG4gICAgICAgIH0pO1xuICAgICAgfSBlbHNlIHtcbiAgICAgICAgZG9jcyA9IEpTT04ucGFyc2UocmVzdWx0LmNvbnRlbnQpO1xuICAgICAgfVxuXG4gICAgICBpZiAoaW1wb3J0TW9kZSA9PT0gJ292ZXJ3cml0ZScpIHtcbiAgICAgICAgLy8g6KaG55uW5qih5byP77ya5YWI5riF56m66ZuG5ZCI77yM5YaN5a+85YWlXG4gICAgICAgIGF3YWl0IHdpbmRvdy5fX21vbmdvLmltcG9ydENvbGxlY3Rpb24oYWN0aXZlQ29ubmVjdGlvbklkLCBzZWxlY3RlZERiLCBzZWxlY3RlZENvbGxlY3Rpb24sIGRvY3MsIHRydWUpO1xuICAgICAgICBtZXNzYWdlLnN1Y2Nlc3MoYOWvvOWFpeWujOaIkO+8muW3suimhuebluWvvOWFpSAke2RvY3MubGVuZ3RofSDmnaHmlbDmja5gKTtcbiAgICAgIH0gZWxzZSB7XG4gICAgICAgIGNvbnN0IGltcG9ydFJlc3VsdCA9IGF3YWl0IHdpbmRvdy5fX21vbmdvLmltcG9ydENvbGxlY3Rpb24oYWN0aXZlQ29ubmVjdGlvbklkLCBzZWxlY3RlZERiLCBzZWxlY3RlZENvbGxlY3Rpb24sIGRvY3MpO1xuICAgICAgICBsZXQgbXNnID0gYOWvvOWFpeWujOaIkO+8muaWsOWiniAke2ltcG9ydFJlc3VsdC5pbnNlcnRlZENvdW50fSDmnaFgO1xuICAgICAgICBpZiAoaW1wb3J0UmVzdWx0LnJlcGxhY2VkQ291bnQpIG1zZyArPSBg77yM6KaG55uWICR7aW1wb3J0UmVzdWx0LnJlcGxhY2VkQ291bnR9IOadoWA7XG4gICAgICAgIG1lc3NhZ2Uuc3VjY2Vzcyhtc2cpO1xuICAgICAgfVxuICAgICAgdHJpZ2dlclJlbG9hZCgpO1xuICAgICAgc2V0RXhwb3J0T3BlbihmYWxzZSk7XG4gICAgfSBjYXRjaCAoZXJyKSB7IG1lc3NhZ2UuZXJyb3IoJ+WvvOWFpeWksei0pTogJyArIGVyci5tZXNzYWdlKTsgfVxuICAgIHNldExvYWRpbmcoZmFsc2UpO1xuICB9O1xuXG4gIC8vIENTViDooYzop6PmnpDlmajvvIjmlK/mjIHlvJXlj7flhoXnmoTpgJflj7fvvIlcbiAgZnVuY3Rpb24gcGFyc2VDU1ZMaW5lKGxpbmUpIHtcbiAgICBjb25zdCByZXN1bHQgPSBbXTtcbiAgICBsZXQgY3VycmVudCA9ICcnO1xuICAgIGxldCBpblF1b3RlcyA9IGZhbHNlO1xuICAgIGZvciAobGV0IGkgPSAwOyBpIDwgbGluZS5sZW5ndGg7IGkrKykge1xuICAgICAgY29uc3QgY2ggPSBsaW5lW2ldO1xuICAgICAgaWYgKGNoID09PSAnXCInKSB7XG4gICAgICAgIGlmIChpblF1b3RlcyAmJiBsaW5lW2kgKyAxXSA9PT0gJ1wiJykge1xuICAgICAgICAgIGN1cnJlbnQgKz0gJ1wiJztcbiAgICAgICAgICBpKys7XG4gICAgICAgIH0gZWxzZSB7XG4gICAgICAgICAgaW5RdW90ZXMgPSAhaW5RdW90ZXM7XG4gICAgICAgIH1cbiAgICAgIH0gZWxzZSBpZiAoY2ggPT09ICcsJyAmJiAhaW5RdW90ZXMpIHtcbiAgICAgICAgcmVzdWx0LnB1c2goY3VycmVudC50cmltKCkpO1xuICAgICAgICBjdXJyZW50ID0gJyc7XG4gICAgICB9IGVsc2Uge1xuICAgICAgICBjdXJyZW50ICs9IGNoO1xuICAgICAgfVxuICAgIH1cbiAgICByZXN1bHQucHVzaChjdXJyZW50LnRyaW0oKSk7XG4gICAgcmV0dXJuIHJlc3VsdDtcbiAgfVxuXG4gIGNvbnN0IGhhbmRsZVByZXZpZXcgPSBhc3luYyAoKSA9PiB7XG4gICAgdHJ5IHtcbiAgICAgIGNvbnN0IHJlc3VsdCA9IGF3YWl0IHdpbmRvdy5fX21vbmdvLmV4cG9ydENvbGxlY3Rpb24oYWN0aXZlQ29ubmVjdGlvbklkLCBzZWxlY3RlZERiLCBzZWxlY3RlZENvbGxlY3Rpb24sICdqc29uJyk7XG4gICAgICBjb25zdCBkYXRhID0gSlNPTi5wYXJzZShyZXN1bHQuZGF0YSk7XG4gICAgICBzZXRQcmV2aWV3KGRhdGEuc2xpY2UoMCwgNSkpO1xuICAgIH0gY2F0Y2ggKGVycikgeyBtZXNzYWdlLmVycm9yKCfpooTop4jlpLHotKU6ICcgKyBlcnIubWVzc2FnZSk7IH1cbiAgfTtcblxuICB1c2VFZmZlY3QoKCkgPT4ge1xuICAgIGlmIChleHBvcnRPcGVuICYmIHRhYiA9PT0gJ2V4cG9ydCcpIHtcbiAgICAgIHNldFByZXZpZXcobnVsbCk7XG4gICAgfVxuICB9LCBbZXhwb3J0T3BlbiwgdGFiXSk7XG5cbiAgcmV0dXJuIChcbiAgICA8TW9kYWxcbiAgICAgIHRpdGxlPXs8c3Bhbj48RG93bmxvYWRPdXRsaW5lZCBzdHlsZT17eyBjb2xvcjogdC5hY2NlbnQsIG1hcmdpblJpZ2h0OiA4IH19IC8+5a+85Ye6L+WvvOWFpeaVsOaNrjwvc3Bhbj59XG4gICAgICBvcGVuPXtleHBvcnRPcGVufVxuICAgICAgb25DYW5jZWw9eygpID0+IHsgc2V0RXhwb3J0T3BlbihmYWxzZSk7IHNldFByZXZpZXcobnVsbCk7IH19XG4gICAgICB3aWR0aD17NjAwfVxuICAgICAgZm9vdGVyPXtudWxsfVxuICAgID5cbiAgICAgIDxkaXYgc3R5bGU9e3sgbWFyZ2luQm90dG9tOiAxMiB9fT5cbiAgICAgICAgPFNwYWNlPlxuICAgICAgICAgIDxCdXR0b24gdHlwZT17dGFiID09PSAnZXhwb3J0JyA/ICdwcmltYXJ5JyA6ICdkZWZhdWx0J30gc2l6ZT1cInNtYWxsXCIgaWNvbj17PEV4cG9ydE91dGxpbmVkIC8+fSBvbkNsaWNrPXsoKSA9PiBzZXRUYWIoJ2V4cG9ydCcpfT7lr7zlh7o8L0J1dHRvbj5cbiAgICAgICAgICA8QnV0dG9uIHR5cGU9e3RhYiA9PT0gJ2ltcG9ydCcgPyAncHJpbWFyeScgOiAnZGVmYXVsdCd9IHNpemU9XCJzbWFsbFwiIGljb249ezxJbXBvcnRPdXRsaW5lZCAvPn0gb25DbGljaz17KCkgPT4gc2V0VGFiKCdpbXBvcnQnKX0+5a+85YWlPC9CdXR0b24+XG4gICAgICAgIDwvU3BhY2U+XG4gICAgICA8L2Rpdj5cblxuICAgICAge3RhYiA9PT0gJ2V4cG9ydCcgPyAoXG4gICAgICAgIDxkaXY+XG4gICAgICAgICAgPGRpdiBzdHlsZT17eyBtYXJnaW5Cb3R0b206IDEyIH19PlxuICAgICAgICAgICAgPFRleHQgdHlwZT1cInNlY29uZGFyeVwiIHN0eWxlPXt7IGRpc3BsYXk6ICdibG9jaycsIG1hcmdpbkJvdHRvbTogOCB9fT5cbiAgICAgICAgICAgICAg6ZuG5ZCI77yaPFRleHQgY29kZT57c2VsZWN0ZWREYn0ue3NlbGVjdGVkQ29sbGVjdGlvbn08L1RleHQ+XG4gICAgICAgICAgICA8L1RleHQ+XG4gICAgICAgICAgICA8U3BhY2U+XG4gICAgICAgICAgICAgIDxTZWxlY3QgdmFsdWU9e2Zvcm1hdH0gb25DaGFuZ2U9e3NldEZvcm1hdH0gc2l6ZT1cInNtYWxsXCIgc3R5bGU9e3sgd2lkdGg6IDEwMCB9fVxuICAgICAgICAgICAgICAgIG9wdGlvbnM9e1tcbiAgICAgICAgICAgICAgICAgIHsgbGFiZWw6ICdKU09OJywgdmFsdWU6ICdqc29uJyB9LFxuICAgICAgICAgICAgICAgICAgeyBsYWJlbDogJ0NTVicsIHZhbHVlOiAnY3N2JyB9LFxuICAgICAgICAgICAgICAgIF19IC8+XG4gICAgICAgICAgICAgIDxCdXR0b24gdHlwZT1cInByaW1hcnlcIiBpY29uPXs8RXhwb3J0T3V0bGluZWQgLz59IGxvYWRpbmc9e2xvYWRpbmd9IG9uQ2xpY2s9e2hhbmRsZUV4cG9ydH0+5a+85Ye6PC9CdXR0b24+XG4gICAgICAgICAgICAgIDxCdXR0b24gc2l6ZT1cInNtYWxsXCIgb25DbGljaz17aGFuZGxlUHJldmlld30+6aKE6KeI5YmNNeadoTwvQnV0dG9uPlxuICAgICAgICAgICAgPC9TcGFjZT5cbiAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICB7cHJldmlldyAmJiAoXG4gICAgICAgICAgICA8ZGl2PlxuICAgICAgICAgICAgICA8VGV4dCB0eXBlPVwic2Vjb25kYXJ5XCIgc3R5bGU9e3sgZm9udFNpemU6IDEyIH19PumihOiniO+8mjwvVGV4dD5cbiAgICAgICAgICAgICAgPHByZSBzdHlsZT17e1xuICAgICAgICAgICAgICAgIGJhY2tncm91bmQ6IHQuYmcuY29kZSwgY29sb3I6IHQuYWNjZW50LCBwYWRkaW5nOiA4LCBib3JkZXJSYWRpdXM6IDQsXG4gICAgICAgICAgICAgICAgbWF4SGVpZ2h0OiAyMDAsIG92ZXJmbG93OiAnYXV0bycsIGZvbnRTaXplOiAxMiwgbWFyZ2luVG9wOiA0LFxuICAgICAgICAgICAgICAgIHdoaXRlU3BhY2U6ICdwcmUtd3JhcCcsIHdvcmRCcmVhazogJ2JyZWFrLWFsbCcsXG4gICAgICAgICAgICAgIH19PlxuICAgICAgICAgICAgICAgIHtKU09OLnN0cmluZ2lmeShwcmV2aWV3LCBudWxsLCAyKX1cbiAgICAgICAgICAgICAgPC9wcmU+XG4gICAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICApfVxuICAgICAgICA8L2Rpdj5cbiAgICAgICkgOiAoXG4gICAgICAgIDxkaXY+XG4gICAgICAgICAgPFRleHQgdHlwZT1cInNlY29uZGFyeVwiIHN0eWxlPXt7IGRpc3BsYXk6ICdibG9jaycsIG1hcmdpbkJvdHRvbTogOCB9fT5cbiAgICAgICAgICAgIOWvvOWFpeWIsOmbhuWQiO+8mjxUZXh0IGNvZGU+e3NlbGVjdGVkRGJ9LntzZWxlY3RlZENvbGxlY3Rpb259PC9UZXh0PlxuICAgICAgICAgIDwvVGV4dD5cbiAgICAgICAgICA8ZGl2IHN0eWxlPXt7IG1hcmdpbkJvdHRvbTogMTIgfX0+XG4gICAgICAgICAgICA8U3BhY2U+XG4gICAgICAgICAgICAgIDxUZXh0IHR5cGU9XCJzZWNvbmRhcnlcIiBzdHlsZT17eyBmb250U2l6ZTogMTIgfX0+5a+85YWl5qih5byP77yaPC9UZXh0PlxuICAgICAgICAgICAgICA8QnV0dG9uXG4gICAgICAgICAgICAgICAgc2l6ZT1cInNtYWxsXCJcbiAgICAgICAgICAgICAgICB0eXBlPXtpbXBvcnRNb2RlID09PSAnYXBwZW5kJyA/ICdwcmltYXJ5JyA6ICdkZWZhdWx0J31cbiAgICAgICAgICAgICAgICBvbkNsaWNrPXsoKSA9PiBzZXRJbXBvcnRNb2RlKCdhcHBlbmQnKX1cbiAgICAgICAgICAgICAgPlxuICAgICAgICAgICAgICAgIOi/veWKoFxuICAgICAgICAgICAgICA8L0J1dHRvbj5cbiAgICAgICAgICAgICAgPEJ1dHRvblxuICAgICAgICAgICAgICAgIHNpemU9XCJzbWFsbFwiXG4gICAgICAgICAgICAgICAgdHlwZT17aW1wb3J0TW9kZSA9PT0gJ292ZXJ3cml0ZScgPyAncHJpbWFyeScgOiAnZGVmYXVsdCd9XG4gICAgICAgICAgICAgICAgb25DbGljaz17KCkgPT4gc2V0SW1wb3J0TW9kZSgnb3ZlcndyaXRlJyl9XG4gICAgICAgICAgICAgICAgZGFuZ2VyPXtpbXBvcnRNb2RlID09PSAnb3ZlcndyaXRlJ31cbiAgICAgICAgICAgICAgPlxuICAgICAgICAgICAgICAgIOimhuebllxuICAgICAgICAgICAgICA8L0J1dHRvbj5cbiAgICAgICAgICAgIDwvU3BhY2U+XG4gICAgICAgICAgPC9kaXY+XG4gICAgICAgICAge2ltcG9ydE1vZGUgPT09ICdvdmVyd3JpdGUnICYmIChcbiAgICAgICAgICAgIDxkaXYgc3R5bGU9e3tcbiAgICAgICAgICAgICAgcGFkZGluZzogJzZweCAxMHB4JywgbWFyZ2luQm90dG9tOiAxMiwgZm9udFNpemU6IDEyLFxuICAgICAgICAgICAgICBjb2xvcjogdC53YXJuaW5nLFxuICAgICAgICAgICAgfX0+XG4gICAgICAgICAgICAgIOKaoO+4jyDopobnm5bmqKHlvI/kvJrlhYg8c3Ryb25nPua4heepuumbhuWQiOS4reaJgOacieaVsOaNrjwvc3Ryb25nPu+8jOWGjeWvvOWFpeaWh+S7tuWGheWuue+8jOivpeaTjeS9nOS4jeWPr+aSpOmUgO+8gVxuICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgKX1cbiAgICAgICAgICA8VGV4dCB0eXBlPVwic2Vjb25kYXJ5XCIgc3R5bGU9e3sgZm9udFNpemU6IDEyLCBkaXNwbGF5OiAnYmxvY2snLCBtYXJnaW5Cb3R0b206IDEyIH19PlxuICAgICAgICAgICAg6YCJ5oupIEpTT04g5oiWIENTViDmlofku7blr7zlhaXmlbDmja7jgIJcbiAgICAgICAgICA8L1RleHQ+XG4gICAgICAgICAgPEJ1dHRvbiBpY29uPXs8SW1wb3J0T3V0bGluZWQgLz59IGxvYWRpbmc9e2xvYWRpbmd9IG9uQ2xpY2s9e2hhbmRsZUltcG9ydH0+6YCJ5oup5paH5Lu25bm25a+85YWlPC9CdXR0b24+XG4gICAgICAgIDwvZGl2PlxuICAgICAgKX1cbiAgICA8L01vZGFsPlxuICApO1xufSJdLCJmaWxlIjoiRTovd29ya2J1ZGR5UHJvai9tb25nb2RiLWd1aS9zcmMvY29tcG9uZW50cy9FeHBvcnRJbXBvcnRNb2RhbC5qc3gifQ==

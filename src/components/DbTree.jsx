@@ -102,6 +102,10 @@ export default function DbTree() {
       const colName = newName.trim() || '_default';
       await window.__mongo.createCollection(activeConnectionId, dbName, colName);
       message.success(createModal.isNewDb ? '数据库和集合创建成功' : '集合创建成功');
+      // 先关闭弹窗，再刷新数据
+      setCreateModal({ open: false, dbName: null, isNewDb: false });
+      setNewName('');
+      setNewDbName('');
       // 如果创建了新数据库，刷新数据库列表
       if (createModal.isNewDb) {
         const dbs = await window.__mongo.listDatabases(activeConnectionId);
@@ -113,9 +117,6 @@ export default function DbTree() {
       setSelectedDb(dbName);
       setSelectedCollection(colName);
       setDocuments([], 0);
-      setCreateModal({ open: false, dbName: null, isNewDb: false });
-      setNewName('');
-      setNewDbName('');
     } catch (err) { message.error('创建失败: ' + err.message); }
   };
 
@@ -273,9 +274,9 @@ export default function DbTree() {
         </div>
       ))}
 
-      <Modal title={<span>{createModal.isNewDb ? <PlusOutlined style={{ color: t.accent, marginRight: 8 }} /> : <TableOutlined style={{ color: t.info, marginRight: 8 }} />}{createModal.isNewDb ? '新建数据库' : '新建集合'}</span>} open={createModal.open} onOk={handleCreate}
+      <Modal title={<span>{createModal.isNewDb ? <PlusOutlined style={{ color: t.accent, marginRight: 8 }} /> : <TableOutlined style={{ color: t.info, marginRight: 8 }} />}{createModal.isNewDb ? '新建数据库' : '新建集合'}</span>} open={createModal.open} onOk={handleCreate} destroyOnClose
         onCancel={() => { setCreateModal({ open: false, dbName: null, isNewDb: false }); setNewName(''); setNewDbName(''); }}
-        okText="创建" cancelText="取消">
+        okText="创建" cancelText="取消" maskClosable={false}>
         {createModal.isNewDb ? (
           <div>
             <Input placeholder="数据库名称" value={newDbName} onChange={e => setNewDbName(e.target.value)}
