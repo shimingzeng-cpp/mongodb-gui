@@ -203,9 +203,28 @@ export default function ChatPanel() {
         buildHistory(lastInput)
       );
 
+      // 从 AI 回复中提取 JSON（处理 markdown 代码块包裹情况）
+      const extractJSON = (text) => {
+        const match = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+        const clean = match ? match[1].trim() : text.trim();
+        try {
+          return JSON.parse(clean);
+        } catch {
+          // 尝试找到第一个 { 和最后一个 }
+          const start = clean.indexOf('{');
+          const end = clean.lastIndexOf('}');
+          if (start >= 0 && end > start) {
+            try {
+              return JSON.parse(clean.substring(start, end + 1));
+            } catch {}
+          }
+          throw new Error('Invalid JSON');
+        }
+      };
+
       let parsed;
       try {
-        parsed = JSON.parse(reply);
+        parsed = extractJSON(reply);
       } catch {
         parsed = { reply, commands: [], action: '', done: true };
       }
