@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Input, Button, Space, Typography, message, Spin, Tag, Modal } from 'antd';
-import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Input, Button, Space, Typography, message, Spin, Tag, Modal, Select, Form } from 'antd';
+import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined, LinkOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 const { chatCompletion, buildSystemPrompt } = window.__ai;
@@ -8,7 +8,7 @@ const { chatCompletion, buildSystemPrompt } = window.__ai;
 const { Text } = Typography;
 
 export default function ChatPanel() {
-  const { selectedDb, selectedCollection, documents, totalDocs, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb, setSelectedCollection, setDatabases, doRefresh, triggerReload, setSchemaOpen, setExportOpen } = useStore();
+  const { selectedDb, selectedCollection, documents, totalDocs, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb, setSelectedCollection, setDatabases, doRefresh, triggerReload, setSchemaOpen, setExportOpen, setAiConfig } = useStore();
   const t = useTheme();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -78,6 +78,11 @@ export default function ChatPanel() {
   // Agent 多轮自主循环
   const [interrupt, setInterrupt] = useState(false);
   const [agentRound, setAgentRound] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsForm] = Form.useForm();
+  const [models, setModels] = useState([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
   const MAX_ROUNDS = 10;
   const MAX_STORAGE_MSGS = 200;    // localStorage 最多保存
   const MAX_CONTEXT_MSGS = 30;      // 发送给 AI 的上下文上限
@@ -493,8 +498,90 @@ export default function ChatPanel() {
     );
   };
 
+  const loadModels = async (url, key) => {
+    if (!url || !key) return;
+    setModelsLoading(true);
+    try {
+      const baseUrl = url.replace(/\/+$/, '');
+      const res = await fetch(`${baseUrl}/models`, {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data?.data?.length) {
+        setModels(data.data.map(m => ({ label: m.id, value: m.id })));
+      } else {
+        setModels([]);
+      }
+    } catch { setModels([]); }
+    setModelsLoading(false);
+  };
+
+  const handleTestConnection = async () => {
+    const { url, key, model } = settingsForm.getFieldsValue();
+    if (!url || !key) { message.warning('请填写 API 地址和 Key'); return; }
+    setTesting(true);
+    try {
+      const baseUrl = url.replace(/\/+$/, '');
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: model || 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      message.success('连接成功！');
+    } catch (err) { message.error('测试失败: ' + err.message); }
+    setTesting(false);
+  };
+
+  const handleSaveSettings = () => {
+    const values = settingsForm.getFieldsValue();
+    setAiConfig({ url: values.url || '', key: values.key || '', model: values.model || 'gpt-4o-mini' });
+    message.success('设置已保存');
+    setShowSettings(false);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* 设置面板 */}
+      {!aiConfig.url && !showSettings && (
+        <div style={{ padding: '6px 12px', background: `${t.warning}22`, borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ fontSize: 11, color: t.warning }}>⚠️ 未配置 API</Text>
+          <Button size="small" type="link" icon={<SettingOutlined />} onClick={() => setShowSettings(true)} style={{ fontSize: 11 }}>去设置</Button>
+        </div>
+      )}
+      {showSettings && (
+        <div style={{ padding: '8px 12px', borderBottom: `1px solid ${t.border}`, background: t.bg.panel, flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text strong style={{ color: t.text.primary, fontSize: 12 }}>API 设置</Text>
+            <Button type="text" size="small" icon={<ClearOutlined />} onClick={() => setShowSettings(false)} style={{ color: t.text.subtle }} />
+          </div>
+          <Form form={settingsForm} layout="vertical" size="small" initialValues={{ url: aiConfig.url, key: aiConfig.key, model: aiConfig.model }}>
+            <Form.Item name="url" label={<Text style={{ fontSize: 11, color: t.text.secondary }}>API 地址</Text>} style={{ marginBottom: 6 }}>
+              <Input placeholder="https://api.openai.com/v1" style={{ fontSize: 12 }} />
+            </Form.Item>
+            <Form.Item name="key" label={<Text style={{ fontSize: 11, color: t.text.secondary }}>API Key</Text>} style={{ marginBottom: 6 }}>
+              <Input.Password placeholder="sk-..." style={{ fontSize: 12 }} />
+            </Form.Item>
+            <Form.Item name="model" label={<Text style={{ fontSize: 11, color: t.text.secondary }}>模型</Text>} style={{ marginBottom: 6 }}>
+              <Select
+                placeholder="选择或输入模型"
+                options={models}
+                showSearch
+                style={{ fontSize: 12 }}
+                dropdownRender={(menu) => models.length > 0 ? menu : <div style={{ padding: 8, textAlign: 'center', color: '#999', fontSize: 11 }}>暂无列表，可手动输入</div>}
+              />
+            </Form.Item>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button size="small" icon={<ReloadOutlined />} loading={modelsLoading} onClick={() => {
+                const { url, key } = settingsForm.getFieldsValue();
+                loadModels(url, key);
+              }}>加载模型</Button>
+              <Button size="small" icon={<LinkOutlined />} loading={testing} onClick={handleTestConnection}>测试连接</Button>
+              <Button size="small" type="primary" onClick={handleSaveSettings}>保存</Button>
+            </div>
+          </Form>
+        </div>
+      )}
       {/* 消息列表 */}
       <div style={{ flex: 1, overflow: 'auto', overflowX: 'hidden', padding: '8px 12px' }}>
         {messages.length === 0 && (

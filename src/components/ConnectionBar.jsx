@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Space, Tag, message, Select, Typography, Input } from 'antd';
-import { LinkOutlined, DisconnectOutlined, SettingOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined, SunOutlined, MoonOutlined, DatabaseOutlined, RobotOutlined, DownloadOutlined } from '@ant-design/icons';
+import { LinkOutlined, DisconnectOutlined, QuestionCircleOutlined, SwapOutlined, PlusOutlined, SunOutlined, MoonOutlined, DatabaseOutlined, RobotOutlined, DownloadOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
@@ -11,7 +11,7 @@ export default function ConnectionBar() {
     connected, connections, activeConnectionId, connectionLoading,
     setConnected, setUri, setActiveConnectionId, setConnectionLoading,
     setDatabases, setSelectedDb, setSelectedCollection,
-    setDocuments, setPage, setSettingsOpen, doRefresh, setHelpOpen, setSyncOpen, setBackupOpen,
+    setDocuments, setPage, setHelpOpen, setSyncOpen, setBackupOpen,
     addConnection, theme: appTheme, toggleTheme, aiOpen, setAiOpen,
   } = useStore();
   const t = useTheme();
@@ -143,7 +143,6 @@ export default function ConnectionBar() {
           style={{ color: aiOpen ? undefined : t.text.secondary }}
         />
         <Button type="text" icon={<QuestionCircleOutlined />} onClick={() => setHelpOpen(true)} title="帮助" style={{ color: t.text.secondary }} />
-        <Button type="text" icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)} title="设置" style={{ color: t.text.secondary }} />
       </Space>
     </div>
   );

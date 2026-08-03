@@ -9,7 +9,6 @@ import DocTable from './components/DocTable';
 import DocEditor from './components/DocEditor';
 import ShellPanel from './components/ShellPanel';
 import ChatPanel from './components/ChatPanel';
-import SettingsModal from './components/SettingsModal';
 import HelpModal from './components/HelpModal';
 import SchemaModal from './components/SchemaModal';
 import IndexModal from './components/IndexModal';
@@ -236,7 +235,6 @@ export default function App() {
           </Layout>
         </Layout>
         <DocEditor />
-        <SettingsModal />
         <HelpModal />
         <SchemaModal />
         <IndexModal />
