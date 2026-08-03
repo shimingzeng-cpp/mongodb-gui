@@ -583,7 +583,18 @@ export default function ChatPanel() {
         </div>
       )}
       {/* 消息列表 */}
-      <div style={{ flex: 1, overflow: 'auto', overflowX: 'hidden', padding: '8px 12px' }}>
+      <div style={{ flex: 1, overflow: 'auto', overflowX: 'hidden', padding: '8px 12px', position: 'relative' }}>
+        {/* 设置按钮（始终可见） */}
+        <div style={{ position: 'absolute', top: 4, right: 8, zIndex: 10 }}>
+          <Button
+            type="text"
+            size="small"
+            icon={<SettingOutlined style={{ fontSize: 13, color: showSettings ? t.accent : t.text.subtle }} />}
+            onClick={() => setShowSettings(!showSettings)}
+            title="API 设置"
+            style={{ padding: 2, minWidth: 24, height: 24 }}
+          />
+        </div>
         {messages.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             <div style={{
