@@ -230,11 +230,12 @@ export default function DocEditor() {
                 format="YYYY-MM-DD HH:mm:ss"
                 showTime
                 placeholder="选择日期"
+                disabled={editingMode === 'edit' && field.originalKey === '_id'}
               />
             ) : (
               <Input placeholder={field.type === 'object' ? '{"key": "value"}' : field.type === 'array' ? '[1, 2, 3]' : field.type === 'boolean' ? 'true / false' : '值'} value={field.value} onChange={e => updateField(index, 'value', e.target.value)}
                 style={{ flex: 1 }}
-                disabled={field.type === 'null'} />
+                disabled={field.type === 'null' || (editingMode === 'edit' && field.originalKey === '_id')} />
             )}
             <Button icon={<DeleteOutlined />} danger type="text" onClick={() => removeField(index)}
               disabled={editingMode === 'edit' && field.originalKey === '_id'} />
