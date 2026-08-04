@@ -204,29 +204,51 @@ export default function ChatPanel() {
       selectedCollection, totalDocs: totalDocs || 0, schemaFields, memorySummary: buildMemorySummary(),
     });
 
+    // AI 压缩历史消息为摘要
+    const summarizeMessages = async (msgs) => {
+      const text = msgs.map(m => `[${m.role}] ${m.content?.substring(0, 200)}`).join('\n');
+      const prompt = `以下是数据库操作助手与用户的对话历史，请将其压缩为一段简洁的摘要（50字以内），包含：涉及哪些集合、做了什么操作、关键结果。\n\n对话历史：\n${text}`;
+      try {
+        const summary = await chatCompletion(aiConfig.url, aiConfig.key, aiConfig.model, [
+          { role: 'system', content: '你是一个对话摘要助手，请用中文简洁总结对话内容。' },
+          { role: 'user', content: prompt },
+        ]);
+        return `[对话摘要] ${summary.replace(/^["']|["']$/g, '')}`;
+      } catch {
+        // 失败时使用简单统计
+        const userCount = msgs.filter(m => m.role === 'user').length;
+        const opCount = msgs.filter(m => m.commands?.length).length;
+        return `[历史对话摘要：此前共 ${userCount} 轮对话，涉及 ${opCount} 次数据库操作]`;
+      }
+    };
+
     // 构建消息历史（含上下文压缩）
-    const buildHistory = (extraContent) => {
+    const buildHistory = async (extraContent) => {
       // 获取当前消息列表
       let history = [];
       try {
-        // 从 React 状态中获取最新消息
         const currentMsgs = messages;
         if (Array.isArray(currentMsgs) && currentMsgs.length > 1) {
-          // 过滤掉空的 AI 消息和系统消息
           const validMsgs = currentMsgs.filter(m =>
             m && m.role && (m.content || m.role === 'user')
           );
 
           if (validMsgs.length > MAX_CONTEXT_MSGS) {
             // 上下文压缩：保留最近的 MAX_CONTEXT_MSGS 条
-            // 把最早的消息压缩成一条摘要
             const headCount = validMsgs.length - MAX_CONTEXT_MSGS;
             const headMsgs = validMsgs.slice(0, headCount);
             const tailMsgs = validMsgs.slice(headCount);
 
-            // 统计之前的对话轮次
-            const userCount = headMsgs.filter(m => m.role === 'user').length;
-            const summary = `[历史对话摘要：此前共 ${userCount} 轮对话，涉及 ${headMsgs.filter(m => m.commands?.length).length} 次数据库操作]`;
+            // 尝试用 AI 压缩历史消息为摘要
+            let summary = '';
+            try {
+              summary = await summarizeMessages(headMsgs);
+            } catch {
+              // 如果 AI 压缩失败，用简单统计作为兜底
+              const userCount = headMsgs.filter(m => m.role === 'user').length;
+              const opCount = headMsgs.filter(m => m.commands?.length).length;
+              summary = `[历史对话摘要：此前共 ${userCount} 轮对话，涉及 ${opCount} 次数据库操作]`;
+            }
 
             history = [
               { role: 'user', content: summary },
@@ -272,7 +294,7 @@ export default function ChatPanel() {
       let fullReply = '';
       const reply = await chatCompletionStream(
         aiConfig.url, aiConfig.key, aiConfig.model,
-        buildHistory(lastInput),
+        await buildHistory(lastInput),
         (chunk) => {
           fullReply += chunk;
           // 流式更新：显示思考进度（不显示原始 JSON）
