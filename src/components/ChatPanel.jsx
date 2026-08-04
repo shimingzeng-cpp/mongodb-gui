@@ -10,6 +10,15 @@ const { chatCompletion, chatCompletionStream, buildSystemPrompt } = window.__ai;
 
 const { Text } = Typography;
 
+// AI 模型预设
+const MODEL_PRESETS = [
+  { label: 'GPT-4o', icon: '⚡', url: 'https://api.openai.com/v1', model: 'gpt-4o' },
+  { label: 'GPT-4o-mini', icon: '⚡', url: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+  { label: 'DeepSeek V3', icon: '🧠', url: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { label: 'DeepSeek R1', icon: '🧠', url: 'https://api.deepseek.com/v1', model: 'deepseek-reasoner' },
+  { label: 'Ollama', icon: '🖥️', url: 'http://localhost:11434/v1', model: 'llama3' },
+];
+
 // Markdown 渲染组件
 function MarkdownContent({ content, t }) {
   if (!content) return null;
@@ -644,6 +653,19 @@ export default function ChatPanel() {
             <Button type="text" size="small" icon={<ClearOutlined />} onClick={() => setAiSettingsOpen(false)} style={{ color: t.text.subtle }} />
           </div>
           <Form form={settingsForm} layout="vertical" size="small" initialValues={{ url: aiConfig.url, key: aiConfig.key, model: aiConfig.model }}>
+            {/* 模型预设 */}
+            <div style={{ marginBottom: 8 }}>
+              <Text style={{ fontSize: 11, color: t.text.secondary, display: 'block', marginBottom: 4 }}>快速选择</Text>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {MODEL_PRESETS.map(p => (
+                  <Button key={p.label} size="small" style={{ fontSize: 11, padding: '0 8px' }}
+                    onClick={() => settingsForm.setFieldsValue({ url: p.url, model: p.model })}
+                    title={`${p.url} | ${p.model}`}>
+                    {p.icon} {p.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
             <Form.Item name="url" label={<Text style={{ fontSize: 11, color: t.text.secondary }}>API 地址</Text>} style={{ marginBottom: 6 }}>
               <Input placeholder="https://api.openai.com/v1" style={{ fontSize: 12 }} />
             </Form.Item>
