@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Input, Button, Space, Typography, message, Spin, Tag, Modal, Select, Form } from 'antd';
-import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined, LinkOutlined, DownOutlined, RightOutlined, BarChartOutlined, PlusOutlined } from '@ant-design/icons';
+import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined, LinkOutlined, DownOutlined, RightOutlined, BarChartOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 import ChartView from './ChartView';
@@ -82,130 +82,33 @@ export default function ChatPanel() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
-  const savedMessagesRef = useRef('');
 
-  // 会话管理
-  const [sessions, setSessions] = useState([]);
-  const [currentSessionId, setCurrentSessionId] = useState(null);
-  const sessionsStorageKey = activeConnectionId ? `chat_sessions_${activeConnectionId}` : null;
+  // 聊天历史持久化 key
+  const chatStorageKey = activeConnectionId ? `chat_history_${activeConnectionId}` : null;
 
-  // 加载会话列表
+  // 加载历史消息
   useEffect(() => {
-    if (sessionsStorageKey) {
+    if (chatStorageKey) {
       try {
-        const saved = localStorage.getItem(sessionsStorageKey);
+        const saved = localStorage.getItem(chatStorageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setSessions(parsed);
-            setCurrentSessionId(parsed[0].id);
+            setMessages(parsed);
           }
         }
       } catch {}
     }
-    // 如果没有会话，创建一个默认会话
-    if (!sessionsStorageKey) return;
-    const existing = localStorage.getItem(sessionsStorageKey);
-    if (!existing) {
-      const newSession = { id: Date.now().toString(), name: '会话 1', messages: [], createdAt: Date.now() };
-      setSessions([newSession]);
-      setCurrentSessionId(newSession.id);
-    }
-  }, [sessionsStorageKey]);
+  }, [chatStorageKey]);
 
-  // 保存会话到 localStorage
+  // 消息变化时自动保存
   useEffect(() => {
-    if (sessionsStorageKey && sessions.length > 0) {
+    if (chatStorageKey && messages.length > 0) {
       try {
-        localStorage.setItem(sessionsStorageKey, JSON.stringify(sessions));
-      } catch {}
+        localStorage.setItem(chatStorageKey, JSON.stringify(messages.slice(-200)));
+      } catch { /* localStorage 满时忽略 */ }
     }
-  }, [sessions, sessionsStorageKey]);
-
-  // 创建新会话
-  const createSession = () => {
-    // 中断当前 AI 循环
-    setInterrupt(true);
-    setLoading(false);
-    // 先保存当前会话的消息
-    const currentMsgs = messages;
-    const newSession = {
-      id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
-      name: `会话 ${sessions.length + 1}`,
-      messages: [],
-      createdAt: Date.now(),
-    };
-    setSessions(prev => {
-      const updated = prev.map(s => s.id === currentSessionId ? { ...s, messages: currentMsgs } : s);
-      return [...updated, newSession];
-    });
-    savedMessagesRef.current = '';
-    setCurrentSessionId(newSession.id);
-    setMessages([]);
-  };
-
-  // 切换会话
-  const switchSession = (id) => {
-    if (id === currentSessionId) return;
-    // 中断当前 AI 循环
-    setInterrupt(true);
-    setLoading(false);
-    // 先保存当前会话的消息
-    const currentMsgs = messages;
-    setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages: currentMsgs } : s));
-    // 加载目标会话的消息
-    const target = sessions.find(s => s.id === id);
-    savedMessagesRef.current = '';
-    setMessages(target?.messages || []);
-    setCurrentSessionId(id);
-  };
-
-  // 重命名会话
-  const renameSession = (id, newName) => {
-    setSessions(prev => prev.map(s => s.id === id ? { ...s, name: newName } : s));
-  };
-
-  // 删除会话
-  const deleteSession = (id) => {
-    // 中断当前 AI 循环
-    setInterrupt(true);
-    setLoading(false);
-    const currentMsgs = messages;
-    setSessions(prev => {
-      // 先保存当前会话消息
-      let filtered = prev.map(s => s.id === currentSessionId ? { ...s, messages: currentMsgs } : s);
-      filtered = filtered.filter(s => s.id !== id);
-      if (filtered.length === 0) {
-        const newSession = { id: Date.now().toString() + Math.random().toString(36).slice(2, 6), name: '会话 1', messages: [], createdAt: Date.now() };
-        savedMessagesRef.current = '';
-        setCurrentSessionId(newSession.id);
-        setMessages([]);
-        return [newSession];
-      }
-      if (currentSessionId === id) {
-        savedMessagesRef.current = '';
-        setCurrentSessionId(filtered[0].id);
-        setMessages(filtered[0].messages || []);
-      }
-      return filtered;
-    });
-  };
-
-  // 保存当前会话消息到 sessions
-  const saveCurrentMessages = (msgs) => {
-    if (!currentSessionId) return;
-    const hash = msgs.length + '|' + (msgs[msgs.length - 1]?.time || '');
-    if (savedMessagesRef.current === hash) return;
-    savedMessagesRef.current = hash;
-    setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages: msgs, updatedAt: Date.now() } : s));
-  };
-
-  // 自动保存消息到当前会话
-  useEffect(() => {
-    if (messages.length > 0) {
-      saveCurrentMessages(messages);
-    }
-  }, [messages]);
+  }, [messages, chatStorageKey]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -610,8 +513,8 @@ export default function ChatPanel() {
 
   const clearChat = () => {
     setMessages([]);
-    if (currentSessionId) {
-      setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages: [] } : s));
+    if (chatStorageKey) {
+      try { localStorage.removeItem(chatStorageKey); } catch {}
     }
     message.success('聊天历史已清除');
   };
@@ -762,29 +665,6 @@ export default function ChatPanel() {
               <Button size="small" type="primary" onClick={handleSaveSettings}>保存</Button>
             </div>
           </Form>
-        </div>
-      )}
-      {/* 会话栏 */}
-      {sessions.length > 0 && (
-        <div style={{ display: 'flex', gap: 2, padding: '4px 8px', borderBottom: `1px solid ${t.border}`, flexShrink: 0, overflowX: 'auto' }}>
-          {sessions.map(s => (
-            <div key={s.id} onClick={() => switchSession(s.id)}
-              style={{
-                cursor: 'pointer', padding: '2px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 11,
-                background: s.id === currentSessionId ? t.bg.highlight : 'transparent',
-                color: s.id === currentSessionId ? t.accent : t.text.secondary,
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}>
-              <Text style={{ fontSize: 11, color: 'inherit' }}>{s.name}</Text>
-              {sessions.length > 1 && (
-                <Button type="text" size="small"
-                  onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
-                  style={{ padding: 0, minWidth: 14, height: 14, fontSize: 10, color: t.text.subtle }}>✕</Button>
-              )}
-            </div>
-          ))}
-          <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 11 }} />} onClick={createSession}
-            style={{ padding: '0 4px', minWidth: 20, height: 20, fontSize: 11, color: t.text.subtle }} title="新建会话" />
         </div>
       )}
       {/* 消息列表 */}
