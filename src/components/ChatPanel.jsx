@@ -82,6 +82,7 @@ export default function ChatPanel() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+  const savedMessagesRef = useRef('');
 
   // 会话管理
   const [sessions, setSessions] = useState([]);
@@ -135,6 +136,7 @@ export default function ChatPanel() {
       const updated = prev.map(s => s.id === currentSessionId ? { ...s, messages: currentMsgs } : s);
       return [...updated, newSession];
     });
+    savedMessagesRef.current = '';
     setCurrentSessionId(newSession.id);
     setMessages([]);
   };
@@ -147,6 +149,7 @@ export default function ChatPanel() {
     setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages: currentMsgs } : s));
     // 加载目标会话的消息
     const target = sessions.find(s => s.id === id);
+    savedMessagesRef.current = '';
     setMessages(target?.messages || []);
     setCurrentSessionId(id);
   };
@@ -165,11 +168,13 @@ export default function ChatPanel() {
       filtered = filtered.filter(s => s.id !== id);
       if (filtered.length === 0) {
         const newSession = { id: Date.now().toString() + Math.random().toString(36).slice(2, 6), name: '会话 1', messages: [], createdAt: Date.now() };
+        savedMessagesRef.current = '';
         setCurrentSessionId(newSession.id);
         setMessages([]);
         return [newSession];
       }
       if (currentSessionId === id) {
+        savedMessagesRef.current = '';
         setCurrentSessionId(filtered[0].id);
         setMessages(filtered[0].messages || []);
       }
@@ -177,12 +182,21 @@ export default function ChatPanel() {
     });
   };
 
-  // 消息变化时自动保存到当前会话（只保存，不触发切换）
+  // 保存当前会话消息到 sessions
+  const saveCurrentMessages = (msgs) => {
+    if (!currentSessionId) return;
+    const hash = msgs.length + '|' + (msgs[msgs.length - 1]?.time || '');
+    if (savedMessagesRef.current === hash) return;
+    savedMessagesRef.current = hash;
+    setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages: msgs, updatedAt: Date.now() } : s));
+  };
+
+  // 自动保存消息到当前会话
   useEffect(() => {
-    if (sessionsStorageKey && currentSessionId && messages.length > 0) {
-      setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages, updatedAt: Date.now() } : s));
+    if (messages.length > 0) {
+      saveCurrentMessages(messages);
     }
-  }, [messages, currentSessionId, sessionsStorageKey]);
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
