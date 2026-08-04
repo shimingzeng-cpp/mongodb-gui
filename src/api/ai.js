@@ -47,6 +47,95 @@ async function chatCompletion(apiUrl, apiKey, model, messages) {
   return data.choices[0].message.content;
 }
 
+/**
+ * 流式输出：边生成边返回内容
+ * @param {function} onChunk - 每个内容片段的回调 (chunkText)
+ * @returns {Promise<string>} 完整内容
+ */
+async function chatCompletionStream(apiUrl, apiKey, model, messages, onChunk) {
+  if (!apiUrl.endsWith('/v1') && !apiUrl.endsWith('/v1/')) {
+    apiUrl = apiUrl.replace(/\/+$/, '') + '/v1';
+  }
+  const url = apiUrl.replace(/\/+$/, '') + '/chat/completions';
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.3,
+      max_tokens: 8192,
+      stream: true,
+    }),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    if (err.startsWith('<!') || err.startsWith('<html')) {
+      throw new Error(`API 地址可能不正确，返回了网页而不是 JSON。请检查 URL 是否包含 /v1。当前请求: ${url}`);
+    }
+    throw new Error(`API 请求失败 (${res.status}): ${err.substring(0, 200)}`);
+  }
+
+  // 读取 SSE 流
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let fullContent = '';
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // 解析 SSE 事件（按行分割）
+    const lines = buffer.split('\n');
+    buffer = lines.pop(); // 保留最后一行（可能不完整）
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const data = trimmed.slice(5).trim();
+      if (data === '[DONE]') continue;
+
+      try {
+        const json = JSON.parse(data);
+        const delta = json.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullContent += delta;
+          if (onChunk) onChunk(delta);
+        }
+      } catch {}
+    }
+  }
+
+  // 处理剩余 buffer
+  if (buffer.trim()) {
+    const trimmed = buffer.trim();
+    if (trimmed.startsWith('data:')) {
+      const data = trimmed.slice(5).trim();
+      if (data !== '[DONE]') {
+        try {
+          const json = JSON.parse(data);
+          const delta = json.choices?.[0]?.delta?.content;
+          if (delta) {
+            fullContent += delta;
+            if (onChunk) onChunk(delta);
+          }
+        } catch {}
+      }
+    }
+  }
+
+  return fullContent;
+}
+
 function buildSystemPrompt(context) {
   const { dbName, collections, fieldNames, sampleDocs, selectedCollection, totalDocs, schemaFields, memorySummary } = context;
 
@@ -141,4 +230,4 @@ function buildSystemPrompt(context) {
   return prompt;
 }
 
-module.exports = { chatCompletion, buildSystemPrompt };
+module.exports = { chatCompletion, chatCompletionStream, buildSystemPrompt };

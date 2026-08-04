@@ -1,11 +1,78 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Input, Button, Space, Typography, message, Spin, Tag, Modal, Select, Form } from 'antd';
-import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined, LinkOutlined } from '@ant-design/icons';
+import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined, LinkOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
-const { chatCompletion, buildSystemPrompt } = window.__ai;
+const { chatCompletion, chatCompletionStream, buildSystemPrompt } = window.__ai;
 
 const { Text } = Typography;
+
+// Markdown 渲染组件
+function MarkdownContent({ content, t }) {
+  if (!content) return null;
+  return (
+    <div className="markdown-content" style={{ fontSize: 13, lineHeight: 1.7 }}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          code({ className, children, ...props }) {
+            const isInline = !className;
+            if (isInline) {
+              return <code style={{ background: t.bg.code, color: t.accent, padding: '1px 4px', borderRadius: 3, fontSize: 12 }}>{children}</code>;
+            }
+            return (
+              <pre style={{ background: t.bg.code, color: t.accent, padding: 10, borderRadius: 6, fontSize: 12, overflow: 'auto', margin: '8px 0' }}>
+                <code className={className} {...props}>{children}</code>
+              </pre>
+            );
+          },
+          table({ children }) {
+            return (
+              <div style={{ overflow: 'auto', margin: '8px 0' }}>
+                <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>{children}</table>
+              </div>
+            );
+          },
+          th({ children }) {
+            return <th style={{ border: `1px solid ${t.border}`, padding: '4px 8px', background: t.bg.panel, textAlign: 'left' }}>{children}</th>;
+          },
+          td({ children }) {
+            return <td style={{ border: `1px solid ${t.border}`, padding: '4px 8px' }}>{children}</td>;
+          },
+          a({ href, children }) {
+            return <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: t.info }}>{children}</a>;
+          },
+          strong({ children }) {
+            return <strong style={{ fontWeight: 600 }}>{children}</strong>;
+          },
+          ul({ children }) {
+            return <ul style={{ paddingLeft: 20, margin: '4px 0' }}>{children}</ul>;
+          },
+          ol({ children }) {
+            return <ol style={{ paddingLeft: 20, margin: '4px 0' }}>{children}</ol>;
+          },
+          li({ children }) {
+            return <li style={{ margin: '2px 0' }}>{children}</li>;
+          },
+          p({ children }) {
+            return <p style={{ margin: '4px 0' }}>{children}</p>;
+          },
+          h1({ children }) { return <h1 style={{ fontSize: 15, margin: '8px 0 4px', fontWeight: 600 }}>{children}</h1>; },
+          h2({ children }) { return <h2 style={{ fontSize: 14, margin: '8px 0 4px', fontWeight: 600 }}>{children}</h2>; },
+          h3({ children }) { return <h3 style={{ fontSize: 13, margin: '6px 0 3px', fontWeight: 600 }}>{children}</h3>; },
+          hr() { return <hr style={{ border: `none`, borderTop: `1px solid ${t.border}`, margin: '8px 0' }} />; },
+          blockquote({ children }) {
+            return <blockquote style={{ borderLeft: `3px solid ${t.accent}`, paddingLeft: 10, margin: '8px 0', color: t.text.secondary }}>{children}</blockquote>;
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 export default function ChatPanel() {
   const { selectedDb, selectedCollection, documents, totalDocs, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb, setSelectedCollection, setDatabases, doRefresh, triggerReload, setSchemaOpen, setExportOpen, setAiConfig, aiSettingsOpen, setAiSettingsOpen } = useStore();
@@ -78,6 +145,7 @@ export default function ChatPanel() {
   // Agent 多轮自主循环
   const [interrupt, setInterrupt] = useState(false);
   const [agentRound, setAgentRound] = useState(0);
+  const [openThinking, setOpenThinking] = useState(null);
   const [settingsForm] = Form.useForm();
   const [models, setModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -201,10 +269,18 @@ export default function ChatPanel() {
       round++;
       setAgentRound(round);
 
-      // 调用 AI
-      const reply = await chatCompletion(
+      // 调用 AI（流式输出）
+      let fullReply = '';
+      const reply = await chatCompletionStream(
         aiConfig.url, aiConfig.key, aiConfig.model,
-        buildHistory(lastInput)
+        buildHistory(lastInput),
+        (chunk) => {
+          fullReply += chunk;
+          // 流式更新：显示思考进度（不显示原始 JSON）
+          setMessages(prev => prev.map(m =>
+            m.time === mainMsg.time ? { ...m, content: m.content || '正在思考...', streaming: true } : m
+          ));
+        }
       );
 
       // 从 AI 回复中提取 JSON（处理 markdown 代码块包裹情况）
@@ -650,9 +726,13 @@ export default function ChatPanel() {
                     )}
                   </div>
                   {msg.content && (
-                    <Text style={{ color: msg.isError ? t.error : msg.isWarning ? t.warning : t.text.primary, fontSize: 13, whiteSpace: 'pre-wrap' }}>
-                      {msg.content}
-                    </Text>
+                    msg.isError || msg.isWarning ? (
+                      <Text style={{ color: msg.isError ? t.error : t.warning, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                        {msg.content}
+                      </Text>
+                    ) : (
+                      <MarkdownContent content={msg.content} t={t} />
+                    )
                   )}
                   {msg.commands && msg.commands.length > 0 && (
                     <div style={{ marginTop: 6 }}>
@@ -661,6 +741,39 @@ export default function ChatPanel() {
                           <Text code style={{ color: t.accent, fontSize: 12 }}>{cmd}</Text>
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {/* 思考过程展示 */}
+                  {msg.steps && msg.steps.length > 0 && (
+                    <div style={{ marginTop: 6 }}>
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={openThinking === msg.time ? <DownOutlined /> : <RightOutlined />}
+                        onClick={() => setOpenThinking(openThinking === msg.time ? null : msg.time)}
+                        style={{ padding: 0, fontSize: 11, color: t.text.subtle }}
+                      >
+                        思考过程（{msg.steps.length} 步）
+                      </Button>
+                      {openThinking === msg.time && (
+                        <div style={{ marginTop: 4, padding: '6px 10px', background: t.bg.panel, borderRadius: 6, fontSize: 12 }}>
+                          {msg.steps.map((step, i) => (
+                            <div key={i} style={{ marginBottom: 6, paddingBottom: 6, borderBottom: i < msg.steps.length - 1 ? `1px solid ${t.border}` : 'none' }}>
+                              <div style={{ color: t.text.subtle, fontSize: 11, marginBottom: 2 }}>第 {step.round} 步</div>
+                              <div style={{ color: t.text.secondary, fontSize: 12 }}>{step.reply}</div>
+                              {step.commands && step.commands.length > 0 && (
+                                <div style={{ marginTop: 2 }}>
+                                  {step.commands.map((cmd, j) => (
+                                    <div key={j} style={{ padding: '1px 6px', background: t.bg.code, borderRadius: 3, marginTop: 2, fontSize: 11 }}>
+                                      <Text code style={{ color: t.accent, fontSize: 11 }}>{cmd}</Text>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                   {msg.executed && msg.execResults && msg.execResults.map((r, i) => renderExecResult(r, i))}
