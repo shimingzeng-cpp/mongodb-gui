@@ -8,7 +8,7 @@ const { chatCompletion, buildSystemPrompt } = window.__ai;
 const { Text } = Typography;
 
 export default function ChatPanel() {
-  const { selectedDb, selectedCollection, documents, totalDocs, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb, setSelectedCollection, setDatabases, doRefresh, triggerReload, setSchemaOpen, setExportOpen, setAiConfig } = useStore();
+  const { selectedDb, selectedCollection, documents, totalDocs, aiConfig, activeConnectionId, setBackupOpen, setSelectedDb, setSelectedCollection, setDatabases, doRefresh, triggerReload, setSchemaOpen, setExportOpen, setAiConfig, aiSettingsOpen, setAiSettingsOpen } = useStore();
   const t = useTheme();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -78,7 +78,6 @@ export default function ChatPanel() {
   // Agent 多轮自主循环
   const [interrupt, setInterrupt] = useState(false);
   const [agentRound, setAgentRound] = useState(0);
-  const [showSettings, setShowSettings] = useState(false);
   const [settingsForm] = Form.useForm();
   const [models, setModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -537,23 +536,23 @@ export default function ChatPanel() {
     const values = settingsForm.getFieldsValue();
     setAiConfig({ url: values.url || '', key: values.key || '', model: values.model || 'gpt-4o-mini' });
     message.success('设置已保存');
-    setShowSettings(false);
+    setAiSettingsOpen(false);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* 设置面板 */}
-      {!aiConfig.url && !showSettings && (
+      {!aiConfig.url && !aiSettingsOpen && (
         <div style={{ padding: '6px 12px', background: `${t.warning}22`, borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={{ fontSize: 11, color: t.warning }}>⚠️ 未配置 API</Text>
-          <Button size="small" type="link" icon={<SettingOutlined />} onClick={() => setShowSettings(true)} style={{ fontSize: 11 }}>去设置</Button>
+          <Button size="small" type="link" icon={<SettingOutlined />} onClick={() => setAiSettingsOpen(true)} style={{ fontSize: 11 }}>去设置</Button>
         </div>
       )}
-      {showSettings && (
+      {aiSettingsOpen && (
         <div style={{ padding: '8px 12px', borderBottom: `1px solid ${t.border}`, background: t.bg.panel, flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Text strong style={{ color: t.text.primary, fontSize: 12 }}>API 设置</Text>
-            <Button type="text" size="small" icon={<ClearOutlined />} onClick={() => setShowSettings(false)} style={{ color: t.text.subtle }} />
+            <Button type="text" size="small" icon={<ClearOutlined />} onClick={() => setAiSettingsOpen(false)} style={{ color: t.text.subtle }} />
           </div>
           <Form form={settingsForm} layout="vertical" size="small" initialValues={{ url: aiConfig.url, key: aiConfig.key, model: aiConfig.model }}>
             <Form.Item name="url" label={<Text style={{ fontSize: 11, color: t.text.secondary }}>API 地址</Text>} style={{ marginBottom: 6 }}>
@@ -582,17 +581,6 @@ export default function ChatPanel() {
           </Form>
         </div>
       )}
-      {/* 设置按钮 */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '2px 4px 0', flexShrink: 0 }}>
-        <Button
-          type="text"
-          size="small"
-          icon={<SettingOutlined style={{ fontSize: 13, color: showSettings ? t.accent : t.text.subtle }} />}
-          onClick={() => setShowSettings(!showSettings)}
-          title="API 设置"
-          style={{ padding: 2, minWidth: 24, height: 24 }}
-        />
-      </div>
       {/* 消息列表 */}
       <div style={{ flex: 1, overflow: 'auto', overflowX: 'hidden', padding: '8px 12px' }}>
         {messages.length === 0 && (

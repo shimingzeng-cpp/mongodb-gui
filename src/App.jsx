@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layout, ConfigProvider, theme, App as AntApp, Button, Typography, Card, Space } from 'antd';
-import { PlusOutlined, LinkOutlined, RobotOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { PlusOutlined, LinkOutlined, RobotOutlined, DatabaseOutlined, SettingOutlined } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import ConnectionBar from './components/ConnectionBar';
 import ConnectionList from './components/ConnectionList';
@@ -223,6 +223,9 @@ export default function App() {
                   <Space>
                     <RobotOutlined style={{ color: t.info }} />
                     <Text strong style={{ color: t.text.primary, fontSize: 13 }}>AI 助手</Text>
+                    <Button type="text" size="small" icon={<SettingOutlined style={{ fontSize: 12, color: useStore.getState().aiSettingsOpen ? t.accent : t.text.subtle }} />}
+                      onClick={() => useStore.getState().setAiSettingsOpen(!useStore.getState().aiSettingsOpen)}
+                      style={{ padding: 2, minWidth: 20, height: 20 }} title="API 设置" />
                   </Space>
                   <Button type="text" size="small" onClick={() => useStore.getState().setAiOpen(false)}
                     style={{ color: t.text.secondary, fontSize: 16, lineHeight: 1 }}>✕</Button>

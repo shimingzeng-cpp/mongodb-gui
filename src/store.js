@@ -152,6 +152,9 @@ const useStore = create((set) => ({
   aiOpen: false,
   setAiOpen: (val) => set({ aiOpen: val }),
 
+  aiSettingsOpen: false,
+  setAiSettingsOpen: (val) => set({ aiSettingsOpen: val }),
+
   // ========== 主题 ==========
   theme: loadTheme(),
   toggleTheme: () => set((state) => {
