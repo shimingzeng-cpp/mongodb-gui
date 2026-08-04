@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Input, Button, Space, Typography, message, Spin, Tag, Modal, Select, Form } from 'antd';
-import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined, LinkOutlined, DownOutlined, RightOutlined, BarChartOutlined } from '@ant-design/icons';
+import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined, LinkOutlined, DownOutlined, RightOutlined, BarChartOutlined, PlusOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 import ChartView from './ChartView';
@@ -83,34 +83,98 @@ export default function ChatPanel() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
 
-  // 聊天历史持久化 key
-  const chatStorageKey = activeConnectionId ? `chat_history_${activeConnectionId}` : null;
+  // 会话管理
+  const [sessions, setSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const sessionsStorageKey = activeConnectionId ? `chat_sessions_${activeConnectionId}` : null;
 
-  // 加载历史消息
+  // 加载会话列表
   useEffect(() => {
-    if (chatStorageKey) {
+    if (sessionsStorageKey) {
       try {
-        const saved = localStorage.getItem(chatStorageKey);
+        const saved = localStorage.getItem(sessionsStorageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setMessages(parsed);
+            setSessions(parsed);
+            setCurrentSessionId(parsed[0].id);
           }
         }
       } catch {}
     }
-  }, [chatStorageKey]);
-
-  // 消息变化时自动保存
-  useEffect(() => {
-    if (chatStorageKey && messages.length > 0) {
-      try {
-        localStorage.setItem(chatStorageKey, JSON.stringify(messages.slice(-MAX_STORAGE_MSGS)));
-      } catch {
-        // localStorage 满时忽略
-      }
+    // 如果没有会话，创建一个默认会话
+    if (!sessionsStorageKey) return;
+    const existing = localStorage.getItem(sessionsStorageKey);
+    if (!existing) {
+      const newSession = { id: Date.now().toString(), name: '会话 1', messages: [], createdAt: Date.now() };
+      setSessions([newSession]);
+      setCurrentSessionId(newSession.id);
     }
-  }, [messages, chatStorageKey]);
+  }, [sessionsStorageKey]);
+
+  // 切换会话时加载对应消息
+  useEffect(() => {
+    const session = sessions.find(s => s.id === currentSessionId);
+    if (session) {
+      setMessages(session.messages || []);
+    }
+  }, [currentSessionId, sessions]);
+
+  // 保存会话到 localStorage
+  useEffect(() => {
+    if (sessionsStorageKey && sessions.length > 0) {
+      try {
+        localStorage.setItem(sessionsStorageKey, JSON.stringify(sessions));
+      } catch {}
+    }
+  }, [sessions, sessionsStorageKey]);
+
+  // 创建新会话
+  const createSession = () => {
+    const newSession = {
+      id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+      name: `会话 ${sessions.length + 1}`,
+      messages: [],
+      createdAt: Date.now(),
+    };
+    setSessions(prev => [...prev, newSession]);
+    setCurrentSessionId(newSession.id);
+    setMessages([]);
+  };
+
+  // 切换会话
+  const switchSession = (id) => {
+    setCurrentSessionId(id);
+  };
+
+  // 重命名会话
+  const renameSession = (id, newName) => {
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, name: newName } : s));
+  };
+
+  // 删除会话
+  const deleteSession = (id) => {
+    setSessions(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      if (filtered.length === 0) {
+        const newSession = { id: Date.now().toString(), name: '会话 1', messages: [], createdAt: Date.now() };
+        setCurrentSessionId(newSession.id);
+        setMessages([]);
+        return [newSession];
+      }
+      if (currentSessionId === id) {
+        setCurrentSessionId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
+
+  // 消息变化时自动保存到当前会话
+  useEffect(() => {
+    if (sessionsStorageKey && currentSessionId && messages.length > 0) {
+      setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages, updatedAt: Date.now() } : s));
+    }
+  }, [messages, currentSessionId, sessionsStorageKey]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -153,7 +217,6 @@ export default function ChatPanel() {
   const [modelsLoading, setModelsLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const MAX_ROUNDS = 10;
-  const MAX_STORAGE_MSGS = 200;    // localStorage 最多保存
   const MAX_CONTEXT_MSGS = 30;      // 发送给 AI 的上下文上限
 
   const agentLoop = async (userInput) => {
@@ -516,8 +579,8 @@ export default function ChatPanel() {
 
   const clearChat = () => {
     setMessages([]);
-    if (chatStorageKey) {
-      try { localStorage.removeItem(chatStorageKey); } catch {}
+    if (currentSessionId) {
+      setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages: [] } : s));
     }
     message.success('聊天历史已清除');
   };
@@ -668,6 +731,29 @@ export default function ChatPanel() {
               <Button size="small" type="primary" onClick={handleSaveSettings}>保存</Button>
             </div>
           </Form>
+        </div>
+      )}
+      {/* 会话栏 */}
+      {sessions.length > 0 && (
+        <div style={{ display: 'flex', gap: 2, padding: '4px 8px', borderBottom: `1px solid ${t.border}`, flexShrink: 0, overflowX: 'auto' }}>
+          {sessions.map(s => (
+            <div key={s.id} onClick={() => switchSession(s.id)}
+              style={{
+                cursor: 'pointer', padding: '2px 8px', borderRadius: 4, whiteSpace: 'nowrap', fontSize: 11,
+                background: s.id === currentSessionId ? t.bg.highlight : 'transparent',
+                color: s.id === currentSessionId ? t.accent : t.text.secondary,
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}>
+              <Text style={{ fontSize: 11, color: 'inherit' }}>{s.name}</Text>
+              {sessions.length > 1 && (
+                <Button type="text" size="small"
+                  onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                  style={{ padding: 0, minWidth: 14, height: 14, fontSize: 10, color: t.text.subtle }}>✕</Button>
+              )}
+            </div>
+          ))}
+          <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 11 }} />} onClick={createSession}
+            style={{ padding: '0 4px', minWidth: 20, height: 20, fontSize: 11, color: t.text.subtle }} title="新建会话" />
         </div>
       )}
       {/* 消息列表 */}
