@@ -124,6 +124,9 @@ export default function ChatPanel() {
 
   // 创建新会话
   const createSession = () => {
+    // 中断当前 AI 循环
+    setInterrupt(true);
+    setLoading(false);
     // 先保存当前会话的消息
     const currentMsgs = messages;
     const newSession = {
@@ -144,6 +147,9 @@ export default function ChatPanel() {
   // 切换会话
   const switchSession = (id) => {
     if (id === currentSessionId) return;
+    // 中断当前 AI 循环
+    setInterrupt(true);
+    setLoading(false);
     // 先保存当前会话的消息
     const currentMsgs = messages;
     setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages: currentMsgs } : s));
@@ -161,6 +167,9 @@ export default function ChatPanel() {
 
   // 删除会话
   const deleteSession = (id) => {
+    // 中断当前 AI 循环
+    setInterrupt(true);
+    setLoading(false);
     const currentMsgs = messages;
     setSessions(prev => {
       // 先保存当前会话消息
