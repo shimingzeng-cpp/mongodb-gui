@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Input, Button, Space, Typography, message, Spin, Tag, Modal, Select, Form } from 'antd';
-import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined, LinkOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
+import { SendOutlined, RobotOutlined, UserOutlined, PlayCircleOutlined, ClearOutlined, DownloadOutlined, SettingOutlined, ReloadOutlined, LinkOutlined, DownOutlined, RightOutlined, BarChartOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
+import ChartView from './ChartView';
 const { chatCompletion, chatCompletionStream, buildSystemPrompt } = window.__ai;
 
 const { Text } = Typography;
@@ -146,6 +147,7 @@ export default function ChatPanel() {
   const [interrupt, setInterrupt] = useState(false);
   const [agentRound, setAgentRound] = useState(0);
   const [openThinking, setOpenThinking] = useState(null);
+  const [chartOpen, setChartOpen] = useState(null); // { msgTime, resultIdx }
   const [settingsForm] = Form.useForm();
   const [models, setModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -536,7 +538,7 @@ export default function ChatPanel() {
     } catch { return ''; }
   };
 
-  const renderExecResult = (result, idx) => {
+  const renderExecResult = (result, idx, msgTime) => {
     if (!result) return null;
     if (!result.success) {
       return <Text key={idx} type="danger" style={{ fontSize: 12 }}>❌ {result.error}</Text>;
@@ -545,13 +547,24 @@ export default function ChatPanel() {
     if (data === undefined || data === null) {
       return <Tag key={idx} color="success">✅ 执行成功</Tag>;
     }
-    if (Array.isArray(data)) {
+    const isArrayOfObjects = Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null;
+    const showChart = chartOpen && chartOpen.msgTime === msgTime && chartOpen.resultIdx === idx;
+
+    if (isArrayOfObjects) {
       return (
         <div key={idx} style={{ marginTop: 4 }}>
-          <Tag color="success">✅ 返回 {data.length} 条</Tag>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Tag color="success">✅ 返回 {data.length} 条</Tag>
+            <Button type="link" size="small" icon={<BarChartOutlined style={{ fontSize: 12 }} />}
+              onClick={() => setChartOpen(showChart ? null : { msgTime, resultIdx: idx })}
+              style={{ fontSize: 11, padding: 0, color: t.text.subtle }}>
+              {showChart ? '收起图表' : '可视化'}
+            </Button>
+          </div>
+          {showChart && <ChartView data={data} onClose={() => setChartOpen(null)} />}
           <pre style={{
             background: t.bg.code, color: t.accent, padding: 8, borderRadius: 4,
-            maxHeight: 200, overflow: 'auto', fontSize: 12, margin: '4px 0 0',
+            maxHeight: showChart ? 100 : 200, overflow: 'auto', fontSize: 12, margin: '4px 0 0',
             whiteSpace: 'pre-wrap', wordBreak: 'break-all',
           }}>
             {JSON.stringify(data, null, 2)}
@@ -776,7 +789,7 @@ export default function ChatPanel() {
                       )}
                     </div>
                   )}
-                  {msg.executed && msg.execResults && msg.execResults.map((r, i) => renderExecResult(r, i))}
+                  {msg.executed && msg.execResults && msg.execResults.map((r, i) => renderExecResult(r, i, msg.time))}
                   {msg.commands && msg.commands.length > 0 && !msg.executed && (
                     <Button
                       size="small"
