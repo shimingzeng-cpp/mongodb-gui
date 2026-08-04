@@ -112,14 +112,6 @@ export default function ChatPanel() {
     }
   }, [sessionsStorageKey]);
 
-  // 切换会话时加载对应消息
-  useEffect(() => {
-    const session = sessions.find(s => s.id === currentSessionId);
-    if (session) {
-      setMessages(session.messages || []);
-    }
-  }, [currentSessionId, sessions]);
-
   // 保存会话到 localStorage
   useEffect(() => {
     if (sessionsStorageKey && sessions.length > 0) {
@@ -131,19 +123,31 @@ export default function ChatPanel() {
 
   // 创建新会话
   const createSession = () => {
+    // 先保存当前会话的消息
+    const currentMsgs = messages;
     const newSession = {
       id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
       name: `会话 ${sessions.length + 1}`,
       messages: [],
       createdAt: Date.now(),
     };
-    setSessions(prev => [...prev, newSession]);
+    setSessions(prev => {
+      const updated = prev.map(s => s.id === currentSessionId ? { ...s, messages: currentMsgs } : s);
+      return [...updated, newSession];
+    });
     setCurrentSessionId(newSession.id);
     setMessages([]);
   };
 
   // 切换会话
   const switchSession = (id) => {
+    if (id === currentSessionId) return;
+    // 先保存当前会话的消息
+    const currentMsgs = messages;
+    setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages: currentMsgs } : s));
+    // 加载目标会话的消息
+    const target = sessions.find(s => s.id === id);
+    setMessages(target?.messages || []);
     setCurrentSessionId(id);
   };
 
@@ -154,22 +158,26 @@ export default function ChatPanel() {
 
   // 删除会话
   const deleteSession = (id) => {
+    const currentMsgs = messages;
     setSessions(prev => {
-      const filtered = prev.filter(s => s.id !== id);
+      // 先保存当前会话消息
+      let filtered = prev.map(s => s.id === currentSessionId ? { ...s, messages: currentMsgs } : s);
+      filtered = filtered.filter(s => s.id !== id);
       if (filtered.length === 0) {
-        const newSession = { id: Date.now().toString(), name: '会话 1', messages: [], createdAt: Date.now() };
+        const newSession = { id: Date.now().toString() + Math.random().toString(36).slice(2, 6), name: '会话 1', messages: [], createdAt: Date.now() };
         setCurrentSessionId(newSession.id);
         setMessages([]);
         return [newSession];
       }
       if (currentSessionId === id) {
         setCurrentSessionId(filtered[0].id);
+        setMessages(filtered[0].messages || []);
       }
       return filtered;
     });
   };
 
-  // 消息变化时自动保存到当前会话
+  // 消息变化时自动保存到当前会话（只保存，不触发切换）
   useEffect(() => {
     if (sessionsStorageKey && currentSessionId && messages.length > 0) {
       setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages, updatedAt: Date.now() } : s));
