@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Table, Button, Input, Select, Space, Typography, message, Tag, Popconfirm, Checkbox, Divider } from 'antd';
-import { PlusOutlined, DeleteOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Modal, Button, Input, Select, Space, Typography, message, Tag, Popconfirm, Checkbox, Divider, Empty } from 'antd';
+import { PlusOutlined, DeleteOutlined, ThunderboltOutlined, ReloadOutlined } from '@ant-design/icons';
 import useStore from '../store';
 import { useTheme } from '../theme';
 
@@ -97,20 +97,20 @@ export default function IndexModal() {
       title={<span><ThunderboltOutlined style={{ color: t.accent, marginRight: 8 }} />索引管理 - {selectedCollection}</span>}
       open={indexOpen}
       onCancel={() => { setIndexOpen(false); setShowCreate(false); }}
-      width={800}
+      width={700}
       footer={null}
     >
-      <Space style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => setShowCreate(!showCreate)}>
           {showCreate ? '取消' : '新建索引'}
         </Button>
-        <Button size="small" onClick={loadIndexes}>刷新</Button>
-      </Space>
+        <Button size="small" icon={<ReloadOutlined />} onClick={loadIndexes}>刷新</Button>
+      </div>
 
       {showCreate && (
-        <div style={{ padding: 12, background: t.bg.panel, borderRadius: 6, marginBottom: 12 }}>
-          <Text strong style={{ color: t.text.secondary }}>新建索引</Text>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+        <div style={{ padding: 12, background: t.bg.panel, borderRadius: 8, marginBottom: 12, border: `1px solid ${t.accent}33` }}>
+          <Text style={{ fontSize: 12, fontWeight: 500, color: t.accent, marginBottom: 8, display: 'block' }}>新建索引</Text>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Select
               value={newField || undefined}
               onChange={setNewField}
@@ -136,15 +136,43 @@ export default function IndexModal() {
         </div>
       )}
 
-      <Table
-        columns={columns}
-        dataSource={indexes}
-        rowKey="name"
-        loading={loading}
-        size="small"
-        pagination={false}
-        scroll={{ y: 300 }}
-      />
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40 }}><Spin size="small" /></div>
+      ) : indexes.length === 0 ? (
+        <Empty description="暂无索引" style={{ padding: 40 }} />
+      ) : (
+        <div style={{ maxHeight: 400, overflow: 'auto' }}>
+          {indexes.map(idx => (
+            <div key={idx.name} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '10px 12px', marginBottom: 6, borderRadius: 8,
+              background: t.bg.panel, border: `1px solid ${t.border}`,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <ThunderboltOutlined style={{ color: t.accent, fontSize: 13 }} />
+                  <Text style={{ color: t.text.primary, fontSize: 12, fontWeight: 500 }}>{idx.name}</Text>
+                  {idx.name === '_id_' && <Tag color="blue" style={{ fontSize: 9, lineHeight: '14px', padding: '0 4px' }}>默认</Tag>}
+                  {idx.unique && <Tag color="green" style={{ fontSize: 9, lineHeight: '14px', padding: '0 4px' }}>唯一</Tag>}
+                  {idx.sparse && <Tag color="orange" style={{ fontSize: 9, lineHeight: '14px', padding: '0 4px' }}>稀疏</Tag>}
+                </div>
+                <div>
+                  {Object.entries(idx.key).map(([field, order]) => (
+                    <Tag key={field} color="blue" style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: '0 2px 2px 0' }}>
+                      {field} {order === 1 ? '↑' : '↓'}
+                    </Tag>
+                  ))}
+                </div>
+              </div>
+              {idx.name !== '_id_' && (
+                <Popconfirm title="确认删除此索引?" onConfirm={() => handleDelete(idx.name)} okText="删除" okType="danger" cancelText="取消">
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />} style={{ flexShrink: 0 }} />
+                </Popconfirm>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </Modal>
   );
 }

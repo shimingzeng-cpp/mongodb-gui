@@ -325,9 +325,13 @@ export default function DocTable() {
       {showFilter && (
         <div style={{ marginBottom: 12 }}>
           {!showAdvanced ? (
-            <div>
+            <div style={{ background: t.bg.panel, borderRadius: 8, padding: 10, border: `1px solid ${t.border}` }}>
               {conditions.map((c, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                <div key={i} style={{
+                  display: 'flex', gap: 8, marginBottom: i < conditions.length - 1 ? 6 : 0,
+                  alignItems: 'center', padding: '4px 0',
+                  borderBottom: i < conditions.length - 1 ? `1px solid ${t.border}` : 'none',
+                }}>
                   <Input
                     value={c.field}
                     onChange={e => updateCondition(i, 'field', e.target.value)}
@@ -358,26 +362,28 @@ export default function DocTable() {
                   )}
                 </div>
               ))}
-              <Space style={{ marginTop: 4 }}>
+              <Space style={{ marginTop: 8 }}>
                 <Button onClick={handleSearch} type="primary" size="small" icon={<SearchOutlined />}>查询</Button>
                 <Button onClick={handleReset} size="small" icon={<ReloadOutlined />}>重置</Button>
                 <Button onClick={() => setShowAdvanced(true)} size="small" icon={<CodeOutlined />}>高级</Button>
               </Space>
             </div>
           ) : (
-            <Space>
-              <Input
-                placeholder='JSON 查询, 如 {"id": 1}'
-                value={advancedJson}
-                onChange={e => setAdvancedJson(e.target.value)}
-                style={{ width: 300 }}
-                size="small"
-                onPressEnter={handleSearch}
-              />
-              <Button onClick={handleSearch} type="primary" size="small" icon={<SearchOutlined />}>查询</Button>
-              <Button onClick={handleReset} size="small" icon={<ReloadOutlined />}>重置</Button>
-              <Button onClick={() => setShowAdvanced(false)} size="small">简易</Button>
-            </Space>
+            <div style={{ background: t.bg.panel, borderRadius: 8, padding: 10, border: `1px solid ${t.border}` }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <Input
+                  placeholder='JSON 查询, 如 {"id": 1}'
+                  value={advancedJson}
+                  onChange={e => setAdvancedJson(e.target.value)}
+                  style={{ flex: 1 }}
+                  size="small"
+                  onPressEnter={handleSearch}
+                />
+                <Button onClick={handleSearch} type="primary" size="small" icon={<SearchOutlined />}>查询</Button>
+                <Button onClick={handleReset} size="small" icon={<ReloadOutlined />}>重置</Button>
+                <Button onClick={() => setShowAdvanced(false)} size="small" icon={<CodeOutlined />}>简易</Button>
+              </div>
+            </div>
           )}
         </div>
       )}
